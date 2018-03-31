@@ -41,7 +41,7 @@ namespace OpenDB;
 class OpenDB
 {
     /**
-     * Registered SQL operators
+     * Registered SQL operators.
      *
      * @var array
      * @access private
@@ -49,7 +49,7 @@ class OpenDB
     private static $operators = array('!=', '<>', '<=', '>=', '=', '<', '>');
 
     /**
-     * The database name
+     * The database name.
      *
      * @var string
      * @access protected
@@ -57,7 +57,7 @@ class OpenDB
     protected $database;
 
     /**
-     * The table name
+     * The table name.
      *
      * @var string
      * @access protected
@@ -65,7 +65,7 @@ class OpenDB
     protected $table;
 
     /**
-     * The database server address
+     * The database server address.
      *
      * @var string
      * @access protected
@@ -73,7 +73,7 @@ class OpenDB
     protected $hostname;
 
     /**
-     * The database username
+     * The database username.
      *
      * @var string
      * @access protected
@@ -81,7 +81,7 @@ class OpenDB
     protected $username;
 
     /**
-     * The database password
+     * The database password.
      *
      * @var string
      * @access protected
@@ -89,7 +89,39 @@ class OpenDB
     protected $password;
 
     /**
-     * The current PDO instance
+     * The PDO driver to use.
+     *
+     * @var string
+     * @access private
+     */
+    private $driver;
+
+    /**
+     * The SGBD to use.
+     *
+     * @var string
+     * @access private
+     */
+    private $sgbd;
+
+    /**
+     * The PDO connection options.
+     *
+     * @var array
+     * @access private
+     */
+    private $options;
+
+    /**
+     * The DSN used for the PDO connection.
+     *
+     * @var string
+     * @access private
+     */
+    private $dsn;
+
+    /**
+     * The current PDO instance.
      *
      * @var object
      * @access private
@@ -97,7 +129,7 @@ class OpenDB
     private $pdo = NULL;
 
     /**
-     * The where clause
+     * The where clause.
      *
      * @var string
      * @access private
@@ -105,7 +137,7 @@ class OpenDB
     private $where = NULL;
 
     /**
-     * The order clause
+     * The order clause.
      *
      * @var string
      * @access private
@@ -113,7 +145,7 @@ class OpenDB
     private $order = NULL;
 
     /**
-     * The limit clause
+     * The limit clause.
      *
      * @var string
      * @access private
@@ -121,42 +153,182 @@ class OpenDB
     private $limit = NULL;
 
     /**
-     * Class __constructor
+     * The "group by" clause
      *
-     * @param  string $table The name of the table
-     * @param  string $database The name of the database
-     * @param  string $server The name of the server
-     * @param  string $user The username for your database connection
-     * @param  string $pass The password associated to the username
-     *
-     * @throws \PDOException
+     * @var string
+     * @access private
      */
-    public function __construct($server, $database, $user, $pass, $table = "")
-    {
-        $this->setDB($database, $table, $server, $user, $pass);
-    }
+    private $group = NULL;
 
     /**
-     * Changes the currently used database
+     * The distinct clause
      *
-     * @param string $database The database's name
-     * @param string $table The table's name
-     * @param string $server The server's url
-     * @param string $user The user name
-     * @param string $pass The password
+     * @var bool
+     * @access private
+     */
+    private $distinct = FALSE;
+
+    /**
+     * The computed query string.
+     *
+     * @var string
+     * @access private
+     */
+    private $queryString = NULL;
+
+    /**
+     * Class __constructor
+     *
+     * @param  array $options The lists of options
      *
      * @throws \PDOException
      */
-    public function setDB($database, $table = NULL, $server = NULL, $user = NULL, $pass = NULL)
+    public function __construct($options = null)
     {
-        $this->database = $database;
-        $this->table    = (isset($table) && $table != '')       ? $table    : $this->table;
-        $this->hostname = (isset($server) && $server != '')     ? $server   : $this->hostname;
-        $this->username = (isset($user) && $server != '')       ? $user     : $this->username;
-        $this->password = (isset($pass) && $server != '')       ? $pass     : $this->password;
+        if (!is_array($options)) {
+            return false;
+        }
 
-        $this->close();
+        $attr = array();
+
+        if (isset($options["sgbd"])) {
+            $this->sgbd = strtolower($options["sgbd"]);
+        }
+
+        if (isset($options["options"])) {
+            $this->options = $options["options"];
+        }
+
+        if (isset($options["command"]) && is_array($options["command"])) {
+            $commands = $options["command"];
+        }
+        else {
+            $commands = [];
+        }
+
+        if (isset($options["dsn"])) {
+            if (is_array($options["dsn"]) && isset($options["dsn"]["driver"])) {
+                $this->driver = $options["dsn"]["driver"];
+                unset($options["dsn"]["driver"]);
+                $attr = $options["dsn"];
+            } else {
+                return false;
+            }
+        } else {
+            if (isset($options["port"]) && is_int($options["port"] * 1)) {
+                $port = $options["port"];
+            }
+
+            switch ($this->sgbd) {
+                case "mariadb":
+                case "mysql":
+                    $this->driver = "mysql";
+                    $attr = array(
+                        "dbname" => $options["database"]
+                    );
+
+                    if (isset($options["socket"])) {
+                        $attr["unix_socket"] = $options["socket"];
+                    } else {
+                        $attr["host"] = $options["hostname"];
+                        if (isset($port)) {
+                            $attr["port"] = $port;
+                        }
+                    }
+
+                    // Make MySQL using standard quoted identifier
+                    $commands[] = "SET SQL_MODE=ANSI_QUOTES";
+                    break;
+
+                case "pgsql":
+                    $this->driver = "pgsql";
+                    $attr = array(
+                        "host" => $options["hostname"],
+                        "dbname" => $options['database']
+                    );
+
+                    if (isset($port)) {
+                        $attr["port"] = $port;
+                    }
+                    break;
+
+                case "sybase":
+                    $this->driver = "dblib";
+                    $attr = array(
+                        "host" => $options["hostname"],
+                        "dbname" => $options["database"]
+                    );
+
+                    if (isset($port)) {
+                        $attr["port"] = $port;
+                    }
+                    break;
+
+                case "oracle":
+                    $this->driver = "oci";
+                    $attr = array(
+                        "dbname" => $options["hostname"] ?
+                            "//{$options['server']}" . (isset($port) ? ":{$port}" : ":1521") . "/{$options['database']}" : $options['database']
+                    );
+
+                    if (isset($options["charset"])) {
+                        $attr["charset"] = $options["charset"];
+                    }
+                    break;
+
+                case "mssql":
+                    if (isset($options["driver"]) && $options["driver"] === "dblib") {
+                        $this->driver = "dblib";
+                        $attr = array(
+                            "host" => $options["hostname"] . (isset($port) ? ":{$port}" : ""),
+                            "dbname" => $options["database"]
+                        );
+                    } else {
+                        $this->driver = "sqlsrv";
+                        $attr = array(
+                            "Server" => $options["hostname"] . (isset($port) ? ",{$port}" : ""),
+                            "Database" => $options["database"]
+                        );
+                    }
+
+                    // Keep MSSQL QUOTED_IDENTIFIER is ON for standard quoting
+                    $commands[] = "SET QUOTED_IDENTIFIER ON";
+                    // Make ANSI_NULLS is ON for NULL value
+                    $commands[] = "SET ANSI_NULLS ON";
+                    break;
+
+                case "sqlite":
+                    $this->driver = "sqlite";
+                    $attr = array(
+                        $options['database']
+                    );
+                    break;
+            }
+        }
+
+        $stack = [];
+        foreach ($attr as $key => $value) {
+            $stack[] = is_int($key) ? $value : "{$key}={$value}";
+        }
+
+        $this->dsn = $this->driver . ":" . implode($stack, ";");
+
+        if (in_array($this->sgbd, ['mariadb', 'mysql', 'pgsql', 'sybase', 'mssql']) && isset($options['charset'])) {
+            $commands[] = "SET NAMES '{$options['charset']}'";
+        }
+
+        $this->hostname = $options["hostname"];
+        $this->database = $options["database"];
+        $this->username = isset($options['username']) ? $options['username'] : null;
+        $this->password = isset($options['password']) ? $options['password'] : null;
+
         $this->_instantiate();
+
+        foreach ($commands as $value) {
+            $this->pdo->exec($value);
+        }
+
+        return $this;
     }
 
     /**
@@ -175,11 +347,25 @@ class OpenDB
     private function _instantiate()
     {
         try {
-            $this->pdo = new \PDO("mysql:host={$this->hostname};dbname={$this->database}", $this->username, $this->password, array(\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => TRUE, \PDO::ATTR_PERSISTENT => TRUE));
+            $this->pdo = new \PDO(
+                $this->dsn,
+                $this->username,
+                $this->password,
+                $this->options
+            );
+        } catch (\PDOException $e) {
+            throw new \PDOException($e->getMessage());
         }
-        catch (\PDOException $e) {
-            throw $e;
-        }
+    }
+
+    /**
+     * Gets the current query string.
+     *
+     * @return string
+     */
+    public function getQueryString(): string
+    {
+        return $this->queryString;
     }
 
     /**
@@ -189,7 +375,7 @@ class OpenDB
      *
      * @return OpenDB
      */
-    public function from($table)
+    public function from($table): OpenDB
     {
         $this->table = $table;
         return $this;
@@ -202,7 +388,7 @@ class OpenDB
      *
      * @return OpenDB
      */
-    public function where($condition)
+    public function where($condition): OpenDB
     {
         // where(array('field1'=>'value', 'field2'=>'value'))
         $this->where = (NULL !== $this->where) ? "{$this->where} OR (" : "(";
@@ -213,9 +399,8 @@ class OpenDB
                 $this->where .= ($i > 0) ? " AND " : "";
                 if (is_int($field)) {
                     $this->where .= $value;
-                }
-                else {
-                    $parts = explode(' ', $value);
+                } else {
+                    $parts = explode(" ", $value);
                     foreach (self::$operators as $operator) {
                         if (in_array($operator, $parts, TRUE) && $parts[0] === $operator) {
                             $operand = $operator;
@@ -226,8 +411,7 @@ class OpenDB
                 }
                 ++$i;
             }
-        }
-        else {
+        } else {
             $this->where .= $condition;
         }
         $this->where .= ")";
@@ -243,7 +427,7 @@ class OpenDB
      *
      * @return OpenDB
      */
-    public function order($field, $mode = "ASC")
+    public function order($field, $mode = "ASC"): OpenDB
     {
         $this->order = " ORDER BY {$field} {$mode} ";
         return $this;
@@ -252,28 +436,52 @@ class OpenDB
     /**
      * Add a limit clause.
      *
-     * @param  int  $offset
-     * @param  int  $count
+     * @param  int $offset
+     * @param  int $count
      *
      * @return OpenDB
      */
-    public function limit($offset, $count)
+    public function limit($offset, $count): OpenDB
     {
         $this->limit = " LIMIT {$offset}, {$count} ";
         return $this;
     }
 
     /**
+     * Add a group clause.
+     *
+     * @param string $field The field used to group results
+     *
+     * @return OpenDB
+     */
+    public function groupBy($field): OpenDB
+    {
+        $this->group = $field;
+        return $this;
+    }
+
+    /**
+     * Add a distinct clause.
+     *
+     * @return OpenDB
+     */
+    public function distinct(): OpenDB
+    {
+        $this->distinct = TRUE;
+        return $this;
+    }
+
+    /**
      * Selects data in database.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws OpenDBException
      *
      * @return \PDOStatement
      */
-    public function select($fields = "*")
+    public function select($fields = "*"): \PDOStatement
     {
         return $this->_select($fields);
     }
@@ -281,14 +489,14 @@ class OpenDB
     /**
      * Executes the SELECT SQL query.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws OpenDBException
      *
      * @return \PDOStatement
      */
-    protected function _select($fields)
+    protected function _select($fields): \PDOStatement
     {
         // Constructing the fields list
         if (is_array($fields)) {
@@ -303,17 +511,16 @@ class OpenDB
         }
 
         // Constructing the SELECT query string
-        $query = "SELECT {$fields} FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->order) ? $this->order : " ") . ((NULL !== $this->limit) ? $this->limit : " ");
+        $this->queryString = "SELECT" . (($this->distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->order) ? $this->order : " ") . ((NULL !== $this->limit) ? $this->limit : " ") . ((NULL !== $this->group) ? "GROUP BY {$this->group}" : " ");;
 
         // Preparing the query
-        $getFieldsData = $this->prepare($query);
+        $getFieldsData = $this->prepare($this->queryString);
 
         // Executing the query
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return $getFieldsData;
-        }
-        else {
+        } else {
             throw new OpenDBException($getFieldsData->errorInfo()[2]);
         }
     }
@@ -323,8 +530,8 @@ class OpenDB
      *
      * @uses   \PDO::prepare()
      *
-     * @param  string  $query      The query to execute
-     * @param  array   $options    PDO options
+     * @param  string $query The query to execute
+     * @param  array $options PDO options
      *
      * @return \PDOStatement
      */
@@ -339,15 +546,18 @@ class OpenDB
      */
     protected function _reset_clauses()
     {
+        $this->distinct = FALSE;
         $this->where = NULL;
         $this->order = NULL;
         $this->limit = NULL;
+        $this->group = NULL;
+        $this->queryString = "";
     }
 
     /**
      * Selects the first data result of the query.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws OpenDBException
@@ -358,7 +568,7 @@ class OpenDB
     {
         $result = $this->select_array($fields);
 
-        if (count($result))
+        if (count($result) > 0)
             return $result[0];
 
         return NULL;
@@ -367,7 +577,7 @@ class OpenDB
     /**
      * Selects data as array of arrays in database.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws OpenDBException
@@ -380,7 +590,7 @@ class OpenDB
         $result = array();
 
         while ($r = $select->fetch(\PDO::FETCH_LAZY)) {
-            $result[] = array_diff_key((array) $r, array("queryString" => "queryString"));
+            $result[] = array_diff_key((array)$r, array("queryString" => "queryString"));
         }
 
         return $result;
@@ -389,7 +599,7 @@ class OpenDB
     /**
      * Selects data as array of objects in database.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws OpenDBException
@@ -411,15 +621,15 @@ class OpenDB
     /**
      * Selects data in database with table joining.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed  $params      The information used for jointures.
+     * @param  mixed $params The information used for jointures.
      *
      * @throws OpenDBException
      *
      * @return \PDOStatement
      */
-    public function join($fields, $params)
+    public function join($fields, $params): \PDOStatement
     {
         return $this->_join($fields, $params);
     }
@@ -427,17 +637,17 @@ class OpenDB
     /**
      * Executes a SELECT ... JOIN query.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed  $params      The information used for jointures.
+     * @param  string|array $fields The fields to select. This value can be an array of fields,
+     *                              or a string of fields (according to the SELECT SQL query syntax).
+     * @param  string|array $params The information used for jointures.
      *
      * @throws OpenDBException
      *
      * @return \PDOStatement
      */
-    private function _join($fields, $params)
+    private function _join($fields, $params): \PDOStatement
     {
-        $jcond = "";
+        $jcond = $params;
 
         if (is_array($fields)) {
             $fields = implode(",", $fields);
@@ -449,15 +659,14 @@ class OpenDB
             }
         }
 
-        $query = "SELECT {$fields} FROM {$this->table} {$jcond} " . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->order) ? $this->order : " ") . ((NULL !== $this->limit) ? $this->limit : "");
+        $this->queryString = "SELECT" . (($this->distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table} {$jcond} " . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->order) ? $this->order : " ") . ((NULL !== $this->limit) ? $this->limit : "");
 
-        $getFieldsData = $this->prepare($query);
+        $getFieldsData = $this->prepare($this->queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return $getFieldsData;
-        }
-        else {
+        } else {
             throw new OpenDBException($getFieldsData->errorInfo()[2]);
         }
     }
@@ -465,9 +674,9 @@ class OpenDB
     /**
      * Selects data as array of arrays in database with table joining.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed  $params      The information used for jointures.
+     * @param  mixed $params The information used for jointures.
      *
      * @throws OpenDBException
      *
@@ -479,7 +688,7 @@ class OpenDB
         $result = array();
 
         while ($r = $join->fetch(\PDO::FETCH_LAZY)) {
-            $result[] = array_diff_key((array) $r, array("queryString" => "queryString"));
+            $result[] = array_diff_key((array)$r, array("queryString" => "queryString"));
         }
 
         return $result;
@@ -488,9 +697,9 @@ class OpenDB
     /**
      * Selects data as array of objects in database with table joining.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
+     * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed  $params      The information used for jointures.
+     * @param  mixed $params The information used for jointures.
      *
      * @throws OpenDBException
      *
@@ -511,29 +720,37 @@ class OpenDB
     /**
      * Counts data in table.
      *
-     * @param  mixed  $fields      The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
+     * @param  string|array $fields The fields to select. This value can be an array of fields,
+     *                              or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws OpenDBException
      *
-     * @return integer
+     * @return int|array
      */
-    public function count($fields = "*"): int
+    public function count($fields = "*")
     {
         if (is_array($fields)) {
             $field = implode(",", $fields);
         }
 
-        $query = "SELECT COUNT(" . ((isset($field)) ? $field : $fields) . ") AS opendb_count FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->limit) ? $this->limit : "");
+        $this->queryString = "SELECT" . ((NULL !== $this->group) ? "{$this->group}," : " ") . "COUNT(" . ((isset($field)) ? $field : $fields) . ") AS opendb_count FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->limit) ? $this->limit : " ") . ((NULL !== $this->group) ? "GROUP BY {$this->group}" : " ");
 
-        $getFieldsData = $this->prepare($query);
+        $getFieldsData = $this->prepare($this->queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
+            if (NULL === $this->group) {
+                $this->_reset_clauses();
+                $data = $getFieldsData->fetch();
+                return (int)$data['opendb_count'];
+            }
+
             $this->_reset_clauses();
-            $data = $getFieldsData->fetch();
-            return (int) $data["opendb_count"];
-        }
-        else {
+            $res = array();
+            while ($data = $getFieldsData->fetch()) {
+                $res[$data[$this->group]] = $data['opendb_count'];
+            }
+            return $res;
+        } else {
             throw new OpenDBException($getFieldsData->errorInfo()[2]);
         }
     }
@@ -541,7 +758,7 @@ class OpenDB
     /**
      * Inserts data in table.
      *
-     * @param  mixed  $fieldsAndValues  The fields and the associated values to insert.
+     * @param  array $fieldsAndValues The fields and the associated values to insert.
      *
      * @throws OpenDBException
      *
@@ -560,15 +777,14 @@ class OpenDB
         $field = implode(",", $fields);
         $value = implode(",", $values);
 
-        $query = "INSERT INTO {$this->table}({$field}) VALUES({$value})";
+        $this->queryString = "INSERT INTO {$this->table}({$field}) VALUES({$value})";
 
-        $getFieldsData = $this->prepare($query);
+        $getFieldsData = $this->prepare($this->queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return TRUE;
-        }
-        else {
+        } else {
             throw new OpenDBException($getFieldsData->errorInfo()[2]);
         }
     }
@@ -576,7 +792,7 @@ class OpenDB
     /**
      * Updates data in table.
      *
-     * @param  mixed  $fieldsAndValues  The fields and the associated values to update.
+     * @param  array $fieldsAndValues The fields and the associated values to update.
      *
      * @throws OpenDBException
      *
@@ -585,7 +801,7 @@ class OpenDB
     public function update($fieldsAndValues): bool
     {
         $updates = "";
-        $count   = count($fieldsAndValues);
+        $count = count($fieldsAndValues);
 
         if (is_array($fieldsAndValues)) {
             foreach ($fieldsAndValues as $field => $value) {
@@ -593,20 +809,18 @@ class OpenDB
                 $updates .= "{$field} = {$value}";
                 $updates .= ($count != 0) ? ", " : "";
             }
-        }
-        else {
+        } else {
             $updates = $fieldsAndValues;
         }
 
-        $query = "UPDATE {$this->table} SET {$updates}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : "");
+        $this->queryString = "UPDATE {$this->table} SET {$updates}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : "");
 
-        $getFieldsData = $this->prepare($query);
+        $getFieldsData = $this->prepare($this->queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return TRUE;
-        }
-        else {
+        } else {
             throw new OpenDBException($getFieldsData->errorInfo()[2]);
         }
     }
@@ -620,15 +834,14 @@ class OpenDB
      */
     public function delete(): bool
     {
-        $query = "DELETE FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : "");
+        $this->queryString = "DELETE FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : "");
 
-        $getFieldsData = $this->prepare($query);
+        $getFieldsData = $this->prepare($this->queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return TRUE;
-        }
-        else {
+        } else {
             throw new OpenDBException($getFieldsData->errorInfo()[2]);
         }
     }
@@ -638,8 +851,8 @@ class OpenDB
      *
      * @uses   \PDO::query()
      *
-     * @param  string  $query      The query to execute
-     * @param  array   $options    PDO options
+     * @param  string $query The query to execute
+     * @param  array $options PDO options
      *
      * @return \PDOStatement
      */
@@ -653,7 +866,7 @@ class OpenDB
      *
      * @uses   \PDO::quote()
      *
-     * @param  string  $value
+     * @param  string $value
      *
      * @return string
      */
@@ -666,4 +879,6 @@ class OpenDB
 /**
  * Dummy class used to throw exceptions
  */
-class OpenDBException extends \Exception { }
+class OpenDBException extends \Exception
+{
+}
