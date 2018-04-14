@@ -1,7 +1,7 @@
 <?php
 
 /**
- * OpenDB - The lightweight PHP ORM
+ * StormQL - The lightweight PHP ORM
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
  * SOFTWARE.
  *
  * @category  Library
- * @package   OpenDB
+ * @package   StormQL
  * @author    Axel Nana <ax.lnana@outlook.com>
  * @copyright 2018 Aliens Group, Inc.
  * @license   MIT <https://github.com/na2axl/bubble/blob/master/LICENSE>
@@ -30,15 +30,15 @@
  * @link      http://opengl.na2axl.tk
  */
 
-namespace OpenDB;
+namespace StormQL;
 
 /**
- * OpenDB - Database Manager Class
+ * StormQL - Database Manager Class
  *
- * @package     OpenDB
+ * @package     StormQL
  * @author      Nana Axel <ax.lnana@outlook.com>
  */
-class OpenDB
+class StormQL
 {
     /**
      * Registered SQL operators.
@@ -373,9 +373,9 @@ class OpenDB
      *
      * @param string $table The table's name
      *
-     * @return OpenDB
+     * @return StormQL
      */
-    public function from($table): OpenDB
+    public function from($table): StormQL
     {
         $this->table = $table;
         return $this;
@@ -386,9 +386,9 @@ class OpenDB
      *
      * @param string|array $condition
      *
-     * @return OpenDB
+     * @return StormQL
      */
-    public function where($condition): OpenDB
+    public function where($condition): StormQL
     {
         // where(array('field1'=>'value', 'field2'=>'value'))
         $this->where = (NULL !== $this->where) ? "{$this->where} OR (" : "(";
@@ -425,9 +425,9 @@ class OpenDB
      * @param string $field
      * @param string $mode
      *
-     * @return OpenDB
+     * @return StormQL
      */
-    public function order($field, $mode = "ASC"): OpenDB
+    public function order($field, $mode = "ASC"): StormQL
     {
         $this->order = " ORDER BY {$field} {$mode} ";
         return $this;
@@ -439,9 +439,9 @@ class OpenDB
      * @param  int $offset
      * @param  int $count
      *
-     * @return OpenDB
+     * @return StormQL
      */
-    public function limit($offset, $count): OpenDB
+    public function limit($offset, $count): StormQL
     {
         $this->limit = " LIMIT {$offset}, {$count} ";
         return $this;
@@ -452,9 +452,9 @@ class OpenDB
      *
      * @param string $field The field used to group results
      *
-     * @return OpenDB
+     * @return StormQL
      */
-    public function groupBy($field): OpenDB
+    public function groupBy($field): StormQL
     {
         $this->group = $field;
         return $this;
@@ -463,9 +463,9 @@ class OpenDB
     /**
      * Add a distinct clause.
      *
-     * @return OpenDB
+     * @return StormQL
      */
-    public function distinct(): OpenDB
+    public function distinct(): StormQL
     {
         $this->distinct = TRUE;
         return $this;
@@ -477,7 +477,7 @@ class OpenDB
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return \PDOStatement
      */
@@ -492,7 +492,7 @@ class OpenDB
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return \PDOStatement
      */
@@ -521,7 +521,7 @@ class OpenDB
             $this->_reset_clauses();
             return $getFieldsData;
         } else {
-            throw new OpenDBException($getFieldsData->errorInfo()[2]);
+            throw new StormQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -560,7 +560,7 @@ class OpenDB
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return array
      */
@@ -580,7 +580,7 @@ class OpenDB
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return array
      */
@@ -602,7 +602,7 @@ class OpenDB
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return array
      */
@@ -625,7 +625,7 @@ class OpenDB
      *                             or a string of fields (according to the SELECT SQL query syntax).
      * @param  mixed $params The information used for jointures.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return \PDOStatement
      */
@@ -641,7 +641,7 @@ class OpenDB
      *                              or a string of fields (according to the SELECT SQL query syntax).
      * @param  string|array $params The information used for jointures.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return \PDOStatement
      */
@@ -667,7 +667,7 @@ class OpenDB
             $this->_reset_clauses();
             return $getFieldsData;
         } else {
-            throw new OpenDBException($getFieldsData->errorInfo()[2]);
+            throw new StormQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -678,7 +678,7 @@ class OpenDB
      *                             or a string of fields (according to the SELECT SQL query syntax).
      * @param  mixed $params The information used for jointures.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return array
      */
@@ -701,7 +701,7 @@ class OpenDB
      *                             or a string of fields (according to the SELECT SQL query syntax).
      * @param  mixed $params The information used for jointures.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return array
      */
@@ -723,7 +723,7 @@ class OpenDB
      * @param  string|array $fields The fields to select. This value can be an array of fields,
      *                              or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return int|array
      */
@@ -733,7 +733,7 @@ class OpenDB
             $field = implode(",", $fields);
         }
 
-        $this->queryString = "SELECT" . ((NULL !== $this->group) ? "{$this->group}," : " ") . "COUNT(" . ((isset($field)) ? $field : $fields) . ") AS opendb_count FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->limit) ? $this->limit : " ") . ((NULL !== $this->group) ? "GROUP BY {$this->group}" : " ");
+        $this->queryString = "SELECT" . ((NULL !== $this->group) ? "{$this->group}," : " ") . "COUNT(" . ((isset($field)) ? $field : $fields) . ") AS stormql_count FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->limit) ? $this->limit : " ") . ((NULL !== $this->group) ? "GROUP BY {$this->group}" : " ");
 
         $getFieldsData = $this->prepare($this->queryString);
 
@@ -741,17 +741,17 @@ class OpenDB
             if (NULL === $this->group) {
                 $this->_reset_clauses();
                 $data = $getFieldsData->fetch();
-                return (int)$data['opendb_count'];
+                return (int)$data['stormql_count'];
             }
 
             $this->_reset_clauses();
             $res = array();
             while ($data = $getFieldsData->fetch()) {
-                $res[$data[$this->group]] = $data['opendb_count'];
+                $res[$data[$this->group]] = $data['stormql_count'];
             }
             return $res;
         } else {
-            throw new OpenDBException($getFieldsData->errorInfo()[2]);
+            throw new StormQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -760,7 +760,7 @@ class OpenDB
      *
      * @param  array $fieldsAndValues The fields and the associated values to insert.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return boolean
      */
@@ -785,7 +785,7 @@ class OpenDB
             $this->_reset_clauses();
             return TRUE;
         } else {
-            throw new OpenDBException($getFieldsData->errorInfo()[2]);
+            throw new StormQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -794,7 +794,7 @@ class OpenDB
      *
      * @param  array $fieldsAndValues The fields and the associated values to update.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return boolean
      */
@@ -821,14 +821,14 @@ class OpenDB
             $this->_reset_clauses();
             return TRUE;
         } else {
-            throw new OpenDBException($getFieldsData->errorInfo()[2]);
+            throw new StormQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
     /**
      * Deletes data in table.
      *
-     * @throws OpenDBException
+     * @throws StormQLException
      *
      * @return boolean
      */
@@ -842,7 +842,7 @@ class OpenDB
             $this->_reset_clauses();
             return TRUE;
         } else {
-            throw new OpenDBException($getFieldsData->errorInfo()[2]);
+            throw new StormQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -879,6 +879,6 @@ class OpenDB
 /**
  * Dummy class used to throw exceptions
  */
-class OpenDBException extends \Exception
+class StormQLException extends \Exception
 {
 }

@@ -1,5 +1,5 @@
 {
-  "name": "na2axl/opendb",
+  "name": "aliensgroup/stormql",
   "description": "The lightweight PHP ORM",
   "type": "library",
   "require-dev": {
@@ -22,7 +22,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "OpenDB\\": "src/"
+      "StormQL\\": "src/"
     }
   }
 }
