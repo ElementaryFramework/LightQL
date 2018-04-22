@@ -25,9 +25,9 @@
  * @package   StormQL
  * @author    Axel Nana <ax.lnana@outlook.com>
  * @copyright 2018 Aliens Group, Inc.
- * @license   MIT <https://github.com/na2axl/bubble/blob/master/LICENSE>
+ * @license   MIT <https://github.com/ElementaryFramework/StormQL/blob/master/LICENSE>
  * @version   GIT: 0.0.1
- * @link      http://opengl.na2axl.tk
+ * @link      http://stormql.na2axl.tk
  */
 
 namespace StormQL;
