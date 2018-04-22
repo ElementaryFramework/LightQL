@@ -1,5 +1,5 @@
 {
-  "name": "aliensgroup/stormql",
+  "name": "elementaryframework/stormql",
   "description": "The lightweight PHP ORM",
   "type": "library",
   "require-dev": {
