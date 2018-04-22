@@ -1,7 +1,7 @@
 <?php
 
 /**
- * StormQL - The lightweight PHP ORM
+ * LightQL - The lightweight PHP ORM
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,23 +22,23 @@
  * SOFTWARE.
  *
  * @category  Library
- * @package   StormQL
+ * @package   LightQL
  * @author    Axel Nana <ax.lnana@outlook.com>
  * @copyright 2018 Aliens Group, Inc.
- * @license   MIT <https://github.com/ElementaryFramework/StormQL/blob/master/LICENSE>
+ * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
  * @version   GIT: 0.0.1
- * @link      http://stormql.na2axl.tk
+ * @link      http://lightql.na2axl.tk
  */
 
-namespace StormQL;
+namespace LightQL;
 
 /**
- * StormQL - Database Manager Class
+ * LightQL - Database Manager Class
  *
- * @package     StormQL
+ * @package     LightQL
  * @author      Nana Axel <ax.lnana@outlook.com>
  */
-class StormQL
+class LightQL
 {
     /**
      * Registered SQL operators.
@@ -94,15 +94,15 @@ class StormQL
      * @var string
      * @access private
      */
-    private $driver;
+    private $_driver;
 
     /**
-     * The SGBD to use.
+     * The DBMS to use.
      *
      * @var string
      * @access private
      */
-    private $sgbd;
+    private $_dbms;
 
     /**
      * The PDO connection options.
@@ -110,7 +110,7 @@ class StormQL
      * @var array
      * @access private
      */
-    private $options;
+    private $_options;
 
     /**
      * The DSN used for the PDO connection.
@@ -118,7 +118,7 @@ class StormQL
      * @var string
      * @access private
      */
-    private $dsn;
+    private $_dsn;
 
     /**
      * The current PDO instance.
@@ -126,7 +126,7 @@ class StormQL
      * @var object
      * @access private
      */
-    private $pdo = NULL;
+    private $_pdo = NULL;
 
     /**
      * The where clause.
@@ -134,7 +134,7 @@ class StormQL
      * @var string
      * @access private
      */
-    private $where = NULL;
+    private $_where = NULL;
 
     /**
      * The order clause.
@@ -142,7 +142,7 @@ class StormQL
      * @var string
      * @access private
      */
-    private $order = NULL;
+    private $_order = NULL;
 
     /**
      * The limit clause.
@@ -150,7 +150,7 @@ class StormQL
      * @var string
      * @access private
      */
-    private $limit = NULL;
+    private $_limit = NULL;
 
     /**
      * The "group by" clause
@@ -158,7 +158,7 @@ class StormQL
      * @var string
      * @access private
      */
-    private $group = NULL;
+    private $_group = NULL;
 
     /**
      * The distinct clause
@@ -166,7 +166,7 @@ class StormQL
      * @var bool
      * @access private
      */
-    private $distinct = FALSE;
+    private $_distinct = FALSE;
 
     /**
      * The computed query string.
@@ -174,7 +174,7 @@ class StormQL
      * @var string
      * @access private
      */
-    private $queryString = NULL;
+    private $_queryString = NULL;
 
     /**
      * Class __constructor
@@ -191,12 +191,12 @@ class StormQL
 
         $attr = array();
 
-        if (isset($options["sgbd"])) {
-            $this->sgbd = strtolower($options["sgbd"]);
+        if (isset($options["dbms"])) {
+            $this->_dbms = strtolower($options["dbms"]);
         }
 
         if (isset($options["options"])) {
-            $this->options = $options["options"];
+            $this->_options = $options["options"];
         }
 
         if (isset($options["command"]) && is_array($options["command"])) {
@@ -208,7 +208,7 @@ class StormQL
 
         if (isset($options["dsn"])) {
             if (is_array($options["dsn"]) && isset($options["dsn"]["driver"])) {
-                $this->driver = $options["dsn"]["driver"];
+                $this->_driver = $options["dsn"]["driver"];
                 unset($options["dsn"]["driver"]);
                 $attr = $options["dsn"];
             } else {
@@ -219,10 +219,10 @@ class StormQL
                 $port = $options["port"];
             }
 
-            switch ($this->sgbd) {
+            switch ($this->_dbms) {
                 case "mariadb":
                 case "mysql":
-                    $this->driver = "mysql";
+                    $this->_driver = "mysql";
                     $attr = array(
                         "dbname" => $options["database"]
                     );
@@ -241,7 +241,7 @@ class StormQL
                     break;
 
                 case "pgsql":
-                    $this->driver = "pgsql";
+                    $this->_driver = "pgsql";
                     $attr = array(
                         "host" => $options["hostname"],
                         "dbname" => $options['database']
@@ -253,7 +253,7 @@ class StormQL
                     break;
 
                 case "sybase":
-                    $this->driver = "dblib";
+                    $this->_driver = "dblib";
                     $attr = array(
                         "host" => $options["hostname"],
                         "dbname" => $options["database"]
@@ -265,7 +265,7 @@ class StormQL
                     break;
 
                 case "oracle":
-                    $this->driver = "oci";
+                    $this->_driver = "oci";
                     $attr = array(
                         "dbname" => $options["hostname"] ?
                             "//{$options['server']}" . (isset($port) ? ":{$port}" : ":1521") . "/{$options['database']}" : $options['database']
@@ -278,13 +278,13 @@ class StormQL
 
                 case "mssql":
                     if (isset($options["driver"]) && $options["driver"] === "dblib") {
-                        $this->driver = "dblib";
+                        $this->_driver = "dblib";
                         $attr = array(
                             "host" => $options["hostname"] . (isset($port) ? ":{$port}" : ""),
                             "dbname" => $options["database"]
                         );
                     } else {
-                        $this->driver = "sqlsrv";
+                        $this->_driver = "sqlsrv";
                         $attr = array(
                             "Server" => $options["hostname"] . (isset($port) ? ",{$port}" : ""),
                             "Database" => $options["database"]
@@ -298,7 +298,7 @@ class StormQL
                     break;
 
                 case "sqlite":
-                    $this->driver = "sqlite";
+                    $this->_driver = "sqlite";
                     $attr = array(
                         $options['database']
                     );
@@ -311,9 +311,9 @@ class StormQL
             $stack[] = is_int($key) ? $value : "{$key}={$value}";
         }
 
-        $this->dsn = $this->driver . ":" . implode($stack, ";");
+        $this->_dsn = $this->_driver . ":" . implode($stack, ";");
 
-        if (in_array($this->sgbd, ['mariadb', 'mysql', 'pgsql', 'sybase', 'mssql']) && isset($options['charset'])) {
+        if (in_array($this->_dbms, ['mariadb', 'mysql', 'pgsql', 'sybase', 'mssql']) && isset($options['charset'])) {
             $commands[] = "SET NAMES '{$options['charset']}'";
         }
 
@@ -325,7 +325,7 @@ class StormQL
         $this->_instantiate();
 
         foreach ($commands as $value) {
-            $this->pdo->exec($value);
+            $this->_pdo->exec($value);
         }
 
         return $this;
@@ -336,7 +336,7 @@ class StormQL
      */
     public function close()
     {
-        $this->pdo = FALSE;
+        $this->_pdo = FALSE;
     }
 
     /**
@@ -347,11 +347,11 @@ class StormQL
     private function _instantiate()
     {
         try {
-            $this->pdo = new \PDO(
-                $this->dsn,
+            $this->_pdo = new \PDO(
+                $this->_dsn,
                 $this->username,
                 $this->password,
-                $this->options
+                $this->_options
             );
         } catch (\PDOException $e) {
             throw new \PDOException($e->getMessage());
@@ -365,7 +365,7 @@ class StormQL
      */
     public function getQueryString(): string
     {
-        return $this->queryString;
+        return $this->_queryString;
     }
 
     /**
@@ -373,9 +373,9 @@ class StormQL
      *
      * @param string $table The table's name
      *
-     * @return StormQL
+     * @return LightQL
      */
-    public function from($table): StormQL
+    public function from($table): LightQL
     {
         $this->table = $table;
         return $this;
@@ -386,19 +386,19 @@ class StormQL
      *
      * @param string|array $condition
      *
-     * @return StormQL
+     * @return LightQL
      */
-    public function where($condition): StormQL
+    public function where($condition): LightQL
     {
         // where(array('field1'=>'value', 'field2'=>'value'))
-        $this->where = (NULL !== $this->where) ? "{$this->where} OR (" : "(";
+        $this->_where = (NULL !== $this->_where) ? "{$this->_where} OR (" : "(";
         if (is_array($condition)) {
             $i = 0;
             $operand = "=";
             foreach ($condition as $field => $value) {
-                $this->where .= ($i > 0) ? " AND " : "";
+                $this->_where .= ($i > 0) ? " AND " : "";
                 if (is_int($field)) {
-                    $this->where .= $value;
+                    $this->_where .= $value;
                 } else {
                     $parts = explode(" ", $value);
                     foreach (self::$operators as $operator) {
@@ -406,15 +406,15 @@ class StormQL
                             $operand = $operator;
                         }
                     }
-                    $this->where .= "{$field} {$operand} " . str_replace($operand, "", $value);
+                    $this->_where .= "{$field} {$operand} " . str_replace($operand, "", $value);
                     $operand = "=";
                 }
                 ++$i;
             }
         } else {
-            $this->where .= $condition;
+            $this->_where .= $condition;
         }
-        $this->where .= ")";
+        $this->_where .= ")";
 
         return $this;
     }
@@ -425,11 +425,11 @@ class StormQL
      * @param string $field
      * @param string $mode
      *
-     * @return StormQL
+     * @return LightQL
      */
-    public function order($field, $mode = "ASC"): StormQL
+    public function order($field, $mode = "ASC"): LightQL
     {
-        $this->order = " ORDER BY {$field} {$mode} ";
+        $this->_order = " ORDER BY {$field} {$mode} ";
         return $this;
     }
 
@@ -439,11 +439,11 @@ class StormQL
      * @param  int $offset
      * @param  int $count
      *
-     * @return StormQL
+     * @return LightQL
      */
-    public function limit($offset, $count): StormQL
+    public function limit($offset, $count): LightQL
     {
-        $this->limit = " LIMIT {$offset}, {$count} ";
+        $this->_limit = " LIMIT {$offset}, {$count} ";
         return $this;
     }
 
@@ -452,22 +452,22 @@ class StormQL
      *
      * @param string $field The field used to group results
      *
-     * @return StormQL
+     * @return LightQL
      */
-    public function groupBy($field): StormQL
+    public function groupBy($field): LightQL
     {
-        $this->group = $field;
+        $this->_group = $field;
         return $this;
     }
 
     /**
      * Add a distinct clause.
      *
-     * @return StormQL
+     * @return LightQL
      */
-    public function distinct(): StormQL
+    public function distinct(): LightQL
     {
-        $this->distinct = TRUE;
+        $this->_distinct = TRUE;
         return $this;
     }
 
@@ -477,7 +477,7 @@ class StormQL
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return \PDOStatement
      */
@@ -492,7 +492,7 @@ class StormQL
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return \PDOStatement
      */
@@ -511,17 +511,17 @@ class StormQL
         }
 
         // Constructing the SELECT query string
-        $this->queryString = "SELECT" . (($this->distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->order) ? $this->order : " ") . ((NULL !== $this->limit) ? $this->limit : " ") . ((NULL !== $this->group) ? "GROUP BY {$this->group}" : " ");;
+        $this->_queryString = "SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((NULL !== $this->_order) ? $this->_order : " ") . ((NULL !== $this->_limit) ? $this->_limit : " ") . ((NULL !== $this->_group) ? "GROUP BY {$this->_group}" : " ");;
 
         // Preparing the query
-        $getFieldsData = $this->prepare($this->queryString);
+        $getFieldsData = $this->prepare($this->_queryString);
 
         // Executing the query
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return $getFieldsData;
         } else {
-            throw new StormQLException($getFieldsData->errorInfo()[2]);
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -537,7 +537,7 @@ class StormQL
      */
     public function prepare($query, array $options = array()): \PDOStatement
     {
-        return $this->pdo->prepare($query, $options);
+        return $this->_pdo->prepare($query, $options);
     }
 
     /**
@@ -546,12 +546,12 @@ class StormQL
      */
     protected function _reset_clauses()
     {
-        $this->distinct = FALSE;
-        $this->where = NULL;
-        $this->order = NULL;
-        $this->limit = NULL;
-        $this->group = NULL;
-        $this->queryString = "";
+        $this->_distinct = FALSE;
+        $this->_where = NULL;
+        $this->_order = NULL;
+        $this->_limit = NULL;
+        $this->_group = NULL;
+        $this->_queryString = "";
     }
 
     /**
@@ -560,7 +560,7 @@ class StormQL
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return array
      */
@@ -580,7 +580,7 @@ class StormQL
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return array
      */
@@ -602,7 +602,7 @@ class StormQL
      * @param  mixed $fields The fields to select. This value can be an array of fields,
      *                             or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return array
      */
@@ -625,7 +625,7 @@ class StormQL
      *                             or a string of fields (according to the SELECT SQL query syntax).
      * @param  mixed $params The information used for jointures.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return \PDOStatement
      */
@@ -641,7 +641,7 @@ class StormQL
      *                              or a string of fields (according to the SELECT SQL query syntax).
      * @param  string|array $params The information used for jointures.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return \PDOStatement
      */
@@ -659,15 +659,15 @@ class StormQL
             }
         }
 
-        $this->queryString = "SELECT" . (($this->distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table} {$jcond} " . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->order) ? $this->order : " ") . ((NULL !== $this->limit) ? $this->limit : "");
+        $this->_queryString = "SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table} {$jcond} " . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((NULL !== $this->_order) ? $this->_order : " ") . ((NULL !== $this->_limit) ? $this->_limit : "");
 
-        $getFieldsData = $this->prepare($this->queryString);
+        $getFieldsData = $this->prepare($this->_queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return $getFieldsData;
         } else {
-            throw new StormQLException($getFieldsData->errorInfo()[2]);
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -678,7 +678,7 @@ class StormQL
      *                             or a string of fields (according to the SELECT SQL query syntax).
      * @param  mixed $params The information used for jointures.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return array
      */
@@ -701,7 +701,7 @@ class StormQL
      *                             or a string of fields (according to the SELECT SQL query syntax).
      * @param  mixed $params The information used for jointures.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return array
      */
@@ -723,7 +723,7 @@ class StormQL
      * @param  string|array $fields The fields to select. This value can be an array of fields,
      *                              or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return int|array
      */
@@ -733,12 +733,12 @@ class StormQL
             $field = implode(",", $fields);
         }
 
-        $this->queryString = "SELECT" . ((NULL !== $this->group) ? "{$this->group}," : " ") . "COUNT(" . ((isset($field)) ? $field : $fields) . ") AS stormql_count FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : " ") . ((NULL !== $this->limit) ? $this->limit : " ") . ((NULL !== $this->group) ? "GROUP BY {$this->group}" : " ");
+        $this->_queryString = "SELECT" . ((NULL !== $this->_group) ? "{$this->_group}," : " ") . "COUNT(" . ((isset($field)) ? $field : $fields) . ") AS stormql_count FROM {$this->table}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((NULL !== $this->_limit) ? $this->_limit : " ") . ((NULL !== $this->_group) ? "GROUP BY {$this->_group}" : " ");
 
-        $getFieldsData = $this->prepare($this->queryString);
+        $getFieldsData = $this->prepare($this->_queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
-            if (NULL === $this->group) {
+            if (NULL === $this->_group) {
                 $this->_reset_clauses();
                 $data = $getFieldsData->fetch();
                 return (int)$data['stormql_count'];
@@ -747,11 +747,11 @@ class StormQL
             $this->_reset_clauses();
             $res = array();
             while ($data = $getFieldsData->fetch()) {
-                $res[$data[$this->group]] = $data['stormql_count'];
+                $res[$data[$this->_group]] = $data['stormql_count'];
             }
             return $res;
         } else {
-            throw new StormQLException($getFieldsData->errorInfo()[2]);
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -760,7 +760,7 @@ class StormQL
      *
      * @param  array $fieldsAndValues The fields and the associated values to insert.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return boolean
      */
@@ -777,15 +777,15 @@ class StormQL
         $field = implode(",", $fields);
         $value = implode(",", $values);
 
-        $this->queryString = "INSERT INTO {$this->table}({$field}) VALUES({$value})";
+        $this->_queryString = "INSERT INTO {$this->table}({$field}) VALUES({$value})";
 
-        $getFieldsData = $this->prepare($this->queryString);
+        $getFieldsData = $this->prepare($this->_queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return TRUE;
         } else {
-            throw new StormQLException($getFieldsData->errorInfo()[2]);
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -794,7 +794,7 @@ class StormQL
      *
      * @param  array $fieldsAndValues The fields and the associated values to update.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return boolean
      */
@@ -813,36 +813,36 @@ class StormQL
             $updates = $fieldsAndValues;
         }
 
-        $this->queryString = "UPDATE {$this->table} SET {$updates}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : "");
+        $this->_queryString = "UPDATE {$this->table} SET {$updates}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : "");
 
-        $getFieldsData = $this->prepare($this->queryString);
+        $getFieldsData = $this->prepare($this->_queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return TRUE;
         } else {
-            throw new StormQLException($getFieldsData->errorInfo()[2]);
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
     /**
      * Deletes data in table.
      *
-     * @throws StormQLException
+     * @throws LightQLException
      *
      * @return boolean
      */
     public function delete(): bool
     {
-        $this->queryString = "DELETE FROM {$this->table}" . ((NULL !== $this->where) ? " WHERE {$this->where}" : "");
+        $this->_queryString = "DELETE FROM {$this->table}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : "");
 
-        $getFieldsData = $this->prepare($this->queryString);
+        $getFieldsData = $this->prepare($this->_queryString);
 
         if ($getFieldsData->execute() !== FALSE) {
             $this->_reset_clauses();
             return TRUE;
         } else {
-            throw new StormQLException($getFieldsData->errorInfo()[2]);
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
     }
 
@@ -858,7 +858,7 @@ class StormQL
      */
     public function query($query, array $options = array()): \PDOStatement
     {
-        return $this->pdo->query($query, $options);
+        return $this->_pdo->query($query, $options);
     }
 
     /**
@@ -872,13 +872,13 @@ class StormQL
      */
     public function quote($value): string
     {
-        return $this->pdo->quote($value);
+        return $this->_pdo->quote($value);
     }
 }
 
 /**
  * Dummy class used to throw exceptions
  */
-class StormQLException extends \Exception
+class LightQLException extends \Exception
 {
 }

@@ -1,5 +1,5 @@
 {
-  "name": "elementaryframework/stormql",
+  "name": "elementaryframework/light-ql",
   "description": "The lightweight PHP ORM",
   "type": "library",
   "require-dev": {
@@ -22,7 +22,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "StormQL\\": "StormQL/"
+      "LightQL\\": "src/LightQL/"
     }
   }
 }
