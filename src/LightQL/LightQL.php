@@ -62,6 +62,7 @@ class LightQL
         $manager->registerAnnotation("manyToMany", "ElementaryFramework\\LightQL\\Annotations\\ManyToManyAnnotation");
         $manager->registerAnnotation("manyToOne", "ElementaryFramework\\LightQL\\Annotations\\ManyToOneAnnotation");
         $manager->registerAnnotation("oneToMany", "ElementaryFramework\\LightQL\\Annotations\\OneToManyAnnotation");
+        $manager->registerAnnotation("namedQuery", "ElementaryFramework\\LightQL\\Annotations\\NamedQueryAnnotation");
     /**
      * The database name.
      *
