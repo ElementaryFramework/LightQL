@@ -55,7 +55,7 @@ class LightQL
     /**
      * Register all annotations in the manager
      */
-    public static function registerAnnotation()
+    public static function registerAnnotations()
     {
         $manager = Annotations::getManager();
 
