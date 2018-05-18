@@ -30,28 +30,32 @@
  * @link      http://lightql.na2axl.tk
  */
 
-namespace LightQL;
+namespace ElementaryFramework\LightQL;
+
+use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\LightQL\Exceptions\LightQLException;
 
 /**
  * LightQL - Database Manager Class
  *
- * @package     LightQL
- * @author      Nana Axel <ax.lnana@outlook.com>
+ * @package LightQL
+ * @author  Nana Axel <ax.lnana@outlook.com>
+ * @link    http://lightql.na2axl.tk/docs/api/LightQL/LightQL
  */
 class LightQL
 {
     /**
      * Registered SQL operators.
      *
-     * @var array
+     * @var    array
      * @access private
      */
-    private static $operators = array('!=', '<>', '<=', '>=', '=', '<', '>');
+    private static $_operators = array('!=', '<>', '<=', '>=', '=', '<', '>');
 
     /**
      * The database name.
      *
-     * @var string
+     * @var    string
      * @access protected
      */
     protected $database;
@@ -59,7 +63,7 @@ class LightQL
     /**
      * The table name.
      *
-     * @var string
+     * @var    string
      * @access protected
      */
     protected $table;
@@ -67,7 +71,7 @@ class LightQL
     /**
      * The database server address.
      *
-     * @var string
+     * @var    string
      * @access protected
      */
     protected $hostname;
@@ -75,7 +79,7 @@ class LightQL
     /**
      * The database username.
      *
-     * @var string
+     * @var    string
      * @access protected
      */
     protected $username;
@@ -83,7 +87,7 @@ class LightQL
     /**
      * The database password.
      *
-     * @var string
+     * @var    string
      * @access protected
      */
     protected $password;
@@ -91,7 +95,7 @@ class LightQL
     /**
      * The PDO driver to use.
      *
-     * @var string
+     * @var    string
      * @access private
      */
     private $_driver;
@@ -99,7 +103,7 @@ class LightQL
     /**
      * The DBMS to use.
      *
-     * @var string
+     * @var    string
      * @access private
      */
     private $_dbms;
@@ -107,7 +111,7 @@ class LightQL
     /**
      * The PDO connection options.
      *
-     * @var array
+     * @var    array
      * @access private
      */
     private $_options;
@@ -115,7 +119,7 @@ class LightQL
     /**
      * The DSN used for the PDO connection.
      *
-     * @var string
+     * @var    string
      * @access private
      */
     private $_dsn;
@@ -123,67 +127,67 @@ class LightQL
     /**
      * The current PDO instance.
      *
-     * @var object
+     * @var    \PDO
      * @access private
      */
-    private $_pdo = NULL;
+    private $_pdo = null;
 
     /**
      * The where clause.
      *
-     * @var string
+     * @var    string
      * @access private
      */
-    private $_where = NULL;
+    private $_where = null;
 
     /**
      * The order clause.
      *
-     * @var string
+     * @var    string
      * @access private
      */
-    private $_order = NULL;
+    private $_order = null;
 
     /**
      * The limit clause.
      *
-     * @var string
+     * @var    string
      * @access private
      */
-    private $_limit = NULL;
+    private $_limit = null;
 
     /**
      * The "group by" clause
      *
-     * @var string
+     * @var    string
      * @access private
      */
-    private $_group = NULL;
+    private $_group = null;
 
     /**
      * The distinct clause
      *
-     * @var bool
+     * @var    bool
      * @access private
      */
-    private $_distinct = FALSE;
+    private $_distinct = false;
 
     /**
      * The computed query string.
      *
-     * @var string
+     * @var    string
      * @access private
      */
-    private $_queryString = NULL;
+    private $_queryString = null;
 
     /**
      * Class __constructor
      *
-     * @param  array $options The lists of options
+     * @param array $options The lists of options
      *
-     * @throws \PDOException
+     * @throws LightQLException
      */
-    public function __construct($options = null)
+    public function __construct(array $options = null)
     {
         if (!is_array($options)) {
             return false;
@@ -201,8 +205,7 @@ class LightQL
 
         if (isset($options["command"]) && is_array($options["command"])) {
             $commands = $options["command"];
-        }
-        else {
+        } else {
             $commands = [];
         }
 
@@ -268,7 +271,8 @@ class LightQL
                     $this->_driver = "oci";
                     $attr = array(
                         "dbname" => $options["hostname"] ?
-                            "//{$options['server']}" . (isset($port) ? ":{$port}" : ":1521") . "/{$options['database']}" : $options['database']
+                            "//{$options['server']}" . (isset($port) ? ":{$port}" : ":1521") . "/{$options['database']}" :
+                            $options['database']
                     );
 
                     if (isset($options["charset"])) {
@@ -333,18 +337,22 @@ class LightQL
 
     /**
      * Closes a connection
+     *
+     * @return void
      */
-    public function close()
+    public function close(): void
     {
-        $this->_pdo = FALSE;
+        $this->_pdo = false;
     }
 
     /**
      * Connect to the database / Instantiate PDO
      *
-     * @throws \PDOException
+     * @throws LightQLException When the connexion fails.
+     *
+     * @return void
      */
-    private function _instantiate()
+    private function _instantiate(): void
     {
         try {
             $this->_pdo = new \PDO(
@@ -354,7 +362,7 @@ class LightQL
                 $this->_options
             );
         } catch (\PDOException $e) {
-            throw new \PDOException($e->getMessage());
+            throw new LightQLException($e->getMessage());
         }
     }
 
@@ -375,38 +383,38 @@ class LightQL
      *
      * @return LightQL
      */
-    public function from($table): LightQL
+    public function from(string $table): LightQL
     {
         $this->table = $table;
         return $this;
     }
 
     /**
-     * Add a where condition
+     * Add a where condition.
      *
-     * @param string|array $condition
+     * @param string|array $condition SQL condition in valid format
      *
      * @return LightQL
      */
     public function where($condition): LightQL
     {
         // where(array('field1'=>'value', 'field2'=>'value'))
-        $this->_where = (NULL !== $this->_where) ? "{$this->_where} OR (" : "(";
+        $this->_where = (null !== $this->_where) ? "{$this->_where} OR (" : "(";
         if (is_array($condition)) {
             $i = 0;
             $operand = "=";
-            foreach ($condition as $field => $value) {
+            foreach ($condition as $column => $value) {
                 $this->_where .= ($i > 0) ? " AND " : "";
-                if (is_int($field)) {
+                if (is_int($column)) {
                     $this->_where .= $value;
                 } else {
-                    $parts = explode(" ", $value);
-                    foreach (self::$operators as $operator) {
-                        if (in_array($operator, $parts, TRUE) && $parts[0] === $operator) {
+                    $parts = explode(" ", $this->parseValue($value));
+                    foreach (self::$_operators as $operator) {
+                        if (in_array($operator, $parts, true) && $parts[0] === $operator) {
                             $operand = $operator;
                         }
                     }
-                    $this->_where .= "{$field} {$operand} " . str_replace($operand, "", $value);
+                    $this->_where .= "{$column} {$operand} " . str_replace($operand, "", $value);
                     $operand = "=";
                 }
                 ++$i;
@@ -422,26 +430,26 @@ class LightQL
     /**
      * Add an order clause.
      *
-     * @param string $field
-     * @param string $mode
+     * @param string $column The column to sort.
+     * @param string $mode   The sort mode.
      *
      * @return LightQL
      */
-    public function order($field, $mode = "ASC"): LightQL
+    public function order(string $column, string $mode = "ASC"): LightQL
     {
-        $this->_order = " ORDER BY {$field} {$mode} ";
+        $this->_order = " ORDER BY {$column} {$mode} ";
         return $this;
     }
 
     /**
      * Add a limit clause.
      *
-     * @param  int $offset
-     * @param  int $count
+     * @param int $offset The limit offset.
+     * @param int $count  The number of elements after the offset.
      *
      * @return LightQL
      */
-    public function limit($offset, $count): LightQL
+    public function limit(int $offset, int $count): LightQL
     {
         $this->_limit = " LIMIT {$offset}, {$count} ";
         return $this;
@@ -450,13 +458,13 @@ class LightQL
     /**
      * Add a group clause.
      *
-     * @param string $field The field used to group results
+     * @param string $column The column used to group results.
      *
      * @return LightQL
      */
-    public function groupBy($field): LightQL
+    public function groupBy(string $column): LightQL
     {
-        $this->_group = $field;
+        $this->_group = $column;
         return $this;
     }
 
@@ -467,58 +475,67 @@ class LightQL
      */
     public function distinct(): LightQL
     {
-        $this->_distinct = TRUE;
+        $this->_distinct = true;
         return $this;
     }
 
     /**
      * Selects data in database.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws LightQLException
      *
      * @return \PDOStatement
      */
-    public function select($fields = "*"): \PDOStatement
+    public function select($columns = "*"): \PDOStatement
     {
-        return $this->_select($fields);
+        return $this->_select($columns);
     }
 
     /**
      * Executes the SELECT SQL query.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws LightQLException
      *
      * @return \PDOStatement
      */
-    protected function _select($fields): \PDOStatement
+    private function _select($columns): \PDOStatement
     {
         // Constructing the fields list
-        if (is_array($fields)) {
+        if (is_array($columns)) {
             $_fields = "";
-            foreach ($fields as $field => $alias) {
-                if (is_int($field))
+
+            foreach ($columns as $column => $alias) {
+                if (is_int($column)) {
                     $_fields .= "{$alias}, ";
-                elseif (is_string($field))
-                    $_fields .= "{$field} AS {$alias}, ";
+                } elseif (is_string($column)) {
+                    $_fields .= "{$column} AS {$alias}, ";
+                } else {
+                    throw new LightQLException(
+                        "Invalid data given for the parameter \$columns." .
+                        " Only string and array are supported."
+                    );
+                }
             }
-            $fields = trim($_fields, ", ");
+
+            $columns = trim($_fields, ", ");
         }
 
         // Constructing the SELECT query string
-        $this->_queryString = "SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((NULL !== $this->_order) ? $this->_order : " ") . ((NULL !== $this->_limit) ? $this->_limit : " ") . ((NULL !== $this->_group) ? "GROUP BY {$this->_group}" : " ");;
+        $this->_queryString = trim("SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$columns} FROM {$this->table}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((null !== $this->_order) ? $this->_order : " ") . ((null !== $this->_limit) ? $this->_limit : " ") . ((null !== $this->_group) ? "GROUP BY {$this->_group}" : " "));
 
         // Preparing the query
         $getFieldsData = $this->prepare($this->_queryString);
 
         // Executing the query
-        if ($getFieldsData->execute() !== FALSE) {
-            $this->_reset_clauses();
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+
             return $getFieldsData;
         } else {
             throw new LightQLException($getFieldsData->errorInfo()[2]);
@@ -528,65 +545,64 @@ class LightQL
     /**
      * Prepares a query.
      *
-     * @uses   \PDO::prepare()
+     * @param string $query   The query to execute
+     * @param array  $options PDO options
      *
-     * @param  string $query The query to execute
-     * @param  array $options PDO options
+     * @uses \PDO::prepare()
      *
      * @return \PDOStatement
      */
-    public function prepare($query, array $options = array()): \PDOStatement
+    public function prepare(string $query, array $options = array()): \PDOStatement
     {
         return $this->_pdo->prepare($query, $options);
     }
 
     /**
      * Reset all clauses
-     * @access protected
      */
-    protected function _reset_clauses()
+    protected function resetClauses()
     {
-        $this->_distinct = FALSE;
-        $this->_where = NULL;
-        $this->_order = NULL;
-        $this->_limit = NULL;
-        $this->_group = NULL;
-        $this->_queryString = "";
+        $this->_distinct = false;
+        $this->_where = null;
+        $this->_order = null;
+        $this->_limit = null;
+        $this->_group = null;
     }
 
     /**
      * Selects the first data result of the query.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws LightQLException
      *
      * @return array
      */
-    public function select_first($fields = "*"): array
+    public function selectFirst($columns = "*")
     {
-        $result = $this->select_array($fields);
+        $result = $this->selectArray($columns);
 
-        if (count($result) > 0)
+        if (count($result) > 0) {
             return $result[0];
+        }
 
-        return NULL;
+        return null;
     }
 
     /**
      * Selects data as array of arrays in database.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws LightQLException
      *
      * @return array
      */
-    public function select_array($fields = "*"): array
+    public function selectArray($columns = "*"): array
     {
-        $select = $this->_select($fields);
+        $select = $this->_select($columns);
         $result = array();
 
         while ($r = $select->fetch(\PDO::FETCH_LAZY)) {
@@ -599,16 +615,16 @@ class LightQL
     /**
      * Selects data as array of objects in database.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws LightQLException
      *
      * @return array
      */
-    public function select_object($fields = "*"): array
+    public function selectObject($columns = "*"): array
     {
-        $select = $this->_select($fields);
+        $select = $this->_select($columns);
         $result = array();
 
         while ($r = $select->fetch(\PDO::FETCH_OBJ)) {
@@ -621,50 +637,58 @@ class LightQL
     /**
      * Selects data in database with table joining.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed $params The information used for jointures.
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $params  The information used for JOIN.
      *
      * @throws LightQLException
      *
      * @return \PDOStatement
      */
-    public function join($fields, $params): \PDOStatement
+    public function join($columns, $params): \PDOStatement
     {
-        return $this->_join($fields, $params);
+        return $this->_join($columns, $params);
     }
 
     /**
      * Executes a SELECT ... JOIN query.
      *
-     * @param  string|array $fields The fields to select. This value can be an array of fields,
+     * @param string|array $columns The fields to select. This value can be an array of fields,
      *                              or a string of fields (according to the SELECT SQL query syntax).
-     * @param  string|array $params The information used for jointures.
+     * @param string|array $params  The information used for JOIN.
      *
      * @throws LightQLException
      *
      * @return \PDOStatement
      */
-    private function _join($fields, $params): \PDOStatement
+    private function _join($columns, $params): \PDOStatement
     {
-        $jcond = $params;
+        $joints = $params;
 
-        if (is_array($fields)) {
-            $fields = implode(",", $fields);
+        if (is_array($columns)) {
+            $columns = implode(",", $columns);
         }
 
         if (is_array($params)) {
+            $joints = "";
+
             foreach ($params as $param) {
-                $jcond .= " {$param['side']} JOIN {$param['table']} ON {$param['cond']} ";
+                if (is_array($param)) {
+                    $joints .= " {$param['side']} JOIN {$param['table']} ON {$param['cond']} ";
+                } elseif (is_string($param)) {
+                    $joints .= " {$param} ";
+                } else {
+                    throw new LightQLException("Invalid value used for join.");
+                }
             }
         }
 
-        $this->_queryString = "SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$fields} FROM {$this->table} {$jcond} " . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((NULL !== $this->_order) ? $this->_order : " ") . ((NULL !== $this->_limit) ? $this->_limit : "");
+        $this->_queryString = trim("SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$columns} FROM {$this->table} {$joints}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((null !== $this->_order) ? $this->_order : " ") . ((null !== $this->_limit) ? $this->_limit : ""));
 
         $getFieldsData = $this->prepare($this->_queryString);
 
-        if ($getFieldsData->execute() !== FALSE) {
-            $this->_reset_clauses();
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
             return $getFieldsData;
         } else {
             throw new LightQLException($getFieldsData->errorInfo()[2]);
@@ -674,17 +698,17 @@ class LightQL
     /**
      * Selects data as array of arrays in database with table joining.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed $params The information used for jointures.
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $params  The information used for JOIN.
      *
      * @throws LightQLException
      *
      * @return array
      */
-    public function join_array($fields, $params): array
+    public function joinArray($columns, $params): array
     {
-        $join = $this->_join($fields, $params);
+        $join = $this->_join($columns, $params);
         $result = array();
 
         while ($r = $join->fetch(\PDO::FETCH_LAZY)) {
@@ -697,17 +721,17 @@ class LightQL
     /**
      * Selects data as array of objects in database with table joining.
      *
-     * @param  mixed $fields The fields to select. This value can be an array of fields,
-     *                             or a string of fields (according to the SELECT SQL query syntax).
-     * @param  mixed $params The information used for jointures.
+     * @param mixed $columns The fields to select. This value can be an array of fields,
+     *                       or a string of fields (according to the SELECT SQL query syntax).
+     * @param mixed $params  The information used for JOIN.
      *
      * @throws LightQLException
      *
      * @return array
      */
-    public function join_object($fields, $params): array
+    public function joinObject($columns, $params): array
     {
-        $join = $this->_join($fields, $params);
+        $join = $this->_join($columns, $params);
         $result = array();
 
         while ($r = $join->fetch(\PDO::FETCH_OBJ)) {
@@ -720,35 +744,37 @@ class LightQL
     /**
      * Counts data in table.
      *
-     * @param  string|array $fields The fields to select. This value can be an array of fields,
+     * @param string|array $columns The fields to select. This value can be an array of fields,
      *                              or a string of fields (according to the SELECT SQL query syntax).
      *
      * @throws LightQLException
      *
      * @return int|array
      */
-    public function count($fields = "*")
+    public function count($columns = "*")
     {
-        if (is_array($fields)) {
-            $field = implode(",", $fields);
+        if (is_array($columns)) {
+            $column = implode(",", $columns);
         }
 
-        $this->_queryString = "SELECT" . ((NULL !== $this->_group) ? "{$this->_group}," : " ") . "COUNT(" . ((isset($field)) ? $field : $fields) . ") AS stormql_count FROM {$this->table}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((NULL !== $this->_limit) ? $this->_limit : " ") . ((NULL !== $this->_group) ? "GROUP BY {$this->_group}" : " ");
+        $this->_queryString = trim("SELECT" . ((null !== $this->_group) ? "{$this->_group}," : " ") . "COUNT(" . ((isset($column)) ? $column : $columns) . ") AS lightql_count FROM {$this->table}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((null !== $this->_limit) ? $this->_limit : " ") . ((null !== $this->_group) ? "GROUP BY {$this->_group}" : " "));
 
         $getFieldsData = $this->prepare($this->_queryString);
 
-        if ($getFieldsData->execute() !== FALSE) {
-            if (NULL === $this->_group) {
-                $this->_reset_clauses();
+        if ($getFieldsData->execute() !== false) {
+            if (null === $this->_group) {
+                $this->resetClauses();
                 $data = $getFieldsData->fetch();
-                return (int)$data['stormql_count'];
+                return (int)$data['lightql_count'];
             }
 
-            $this->_reset_clauses();
+            $this->resetClauses();
             $res = array();
+
             while ($data = $getFieldsData->fetch()) {
-                $res[$data[$this->_group]] = $data['stormql_count'];
+                $res[$data[$this->_group]] = $data['lightql_count'];
             }
+
             return $res;
         } else {
             throw new LightQLException($getFieldsData->errorInfo()[2]);
@@ -756,34 +782,66 @@ class LightQL
     }
 
     /**
-     * Inserts data in table.
+     * Inserts one set of data in table.
      *
-     * @param  array $fieldsAndValues The fields and the associated values to insert.
+     * @param array $fieldsAndValues The fields and the associated values to insert.
      *
      * @throws LightQLException
      *
      * @return boolean
      */
-    public function insert($fieldsAndValues): bool
+    public function insert(array $fieldsAndValues): bool
     {
-        $fields = array();
+        $columns = array();
         $values = array();
 
-        foreach ($fieldsAndValues as $field => $value) {
-            $fields[] = $field;
-            $values[] = $value;
+        foreach ($fieldsAndValues as $column => $value) {
+            $columns[] = $column;
+            $values[] = $this->parseValue($value);
         }
 
-        $field = implode(",", $fields);
+        $column = implode(",", $columns);
         $value = implode(",", $values);
 
-        $this->_queryString = "INSERT INTO {$this->table}({$field}) VALUES({$value})";
+        $this->_queryString = trim("INSERT INTO {$this->table}({$column}) VALUE ({$value})");
 
         $getFieldsData = $this->prepare($this->_queryString);
 
-        if ($getFieldsData->execute() !== FALSE) {
-            $this->_reset_clauses();
-            return TRUE;
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+            return true;
+        } else {
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
+        }
+    }
+
+    /**
+     * Inserts a multiple set of data at once in table.
+     *
+     * @param array $columns The list of fields to use.
+     * @param array $values  The array of list of values to insert
+     *                       into the specified fields.
+     *
+     * @throws LightQLException
+     *
+     * @return boolean
+     */
+    public function insertMany(array $columns, array $values): bool
+    {
+        $column = implode(",", $columns);
+
+        $this->_queryString = "INSERT INTO {$this->table}({$column}) VALUES";
+
+        foreach ($values as $i => $value) {
+            $value = implode(",", array_map(array($this, "parseValue"), $value));
+            $this->_queryString .= ($i === 0 ? "" : ", ") . " ({$value})";
+        }
+
+        $getFieldsData = $this->prepare($this->_queryString);
+
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+            return true;
         } else {
             throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
@@ -792,34 +850,34 @@ class LightQL
     /**
      * Updates data in table.
      *
-     * @param  array $fieldsAndValues The fields and the associated values to update.
+     * @param array $fieldsAndValues The fields and the associated values to update.
      *
      * @throws LightQLException
      *
      * @return boolean
      */
-    public function update($fieldsAndValues): bool
+    public function update(array $fieldsAndValues): bool
     {
         $updates = "";
         $count = count($fieldsAndValues);
 
         if (is_array($fieldsAndValues)) {
-            foreach ($fieldsAndValues as $field => $value) {
+            foreach ($fieldsAndValues as $column => $value) {
                 $count--;
-                $updates .= "{$field} = {$value}";
+                $updates .= "{$column} = " . $this->parseValue($value);
                 $updates .= ($count != 0) ? ", " : "";
             }
         } else {
             $updates = $fieldsAndValues;
         }
 
-        $this->_queryString = "UPDATE {$this->table} SET {$updates}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : "");
+        $this->_queryString = trim("UPDATE {$this->table} SET {$updates}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : ""));
 
         $getFieldsData = $this->prepare($this->_queryString);
 
-        if ($getFieldsData->execute() !== FALSE) {
-            $this->_reset_clauses();
-            return TRUE;
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+            return true;
         } else {
             throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
@@ -834,13 +892,34 @@ class LightQL
      */
     public function delete(): bool
     {
-        $this->_queryString = "DELETE FROM {$this->table}" . ((NULL !== $this->_where) ? " WHERE {$this->_where}" : "");
+        $this->_queryString = trim("DELETE FROM {$this->table}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : ""));
 
         $getFieldsData = $this->prepare($this->_queryString);
 
-        if ($getFieldsData->execute() !== FALSE) {
-            $this->_reset_clauses();
-            return TRUE;
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+            return true;
+        } else {
+            throw new LightQLException($getFieldsData->errorInfo()[2]);
+        }
+    }
+
+    /**
+     * Truncates a table.
+     *
+     * @throws LightQLException
+     *
+     * @return boolean
+     */
+    public function truncate(): bool
+    {
+        $this->_queryString = "TRUNCATE {$this->table}";
+
+        $getFieldsData = $this->prepare($this->_queryString);
+
+        if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+            return true;
         } else {
             throw new LightQLException($getFieldsData->errorInfo()[2]);
         }
@@ -849,24 +928,35 @@ class LightQL
     /**
      * Executes a query.
      *
-     * @uses   \PDO::query()
-     *
-     * @param  string $query The query to execute
-     * @param  array $options PDO options
+     * @param string $query The query to execute
+     * @param int    $mode  The fetch mode
      *
      * @return \PDOStatement
+     * @uses \PDO::query()
+     *
      */
-    public function query($query, array $options = array()): \PDOStatement
+    public function query(string $query, int $mode = \PDO::FETCH_LAZY): \PDOStatement
     {
-        return $this->_pdo->query($query, $options);
+        return $this->_pdo->query($query, $mode);
+    }
+
+    /**
+     * Gets the last inserted id by an
+     * INSERT query.
+     *
+     * @return int
+     */
+    public function lastInsertID(): int
+    {
+        return intval($this->_pdo->lastInsertId());
     }
 
     /**
      * Quotes a value.
      *
-     * @uses   \PDO::quote()
+     * @param mixed $value The value to quote.
      *
-     * @param  string $value
+     * @uses \PDO::quote()
      *
      * @return string
      */
@@ -874,11 +964,22 @@ class LightQL
     {
         return $this->_pdo->quote($value);
     }
-}
 
-/**
- * Dummy class used to throw exceptions
- */
-class LightQLException extends \Exception
-{
+    /**
+     * Converts a value to a string.
+     *
+     * @param mixed $value The value to convert.
+     *
+     * @return string
+     */
+    public function parseValue($value): string
+    {
+        if (is_null($value)) {
+            return "NULL";
+        } elseif (is_bool($value)) {
+            return $value ? "1" : "0";
+        } else {
+            return strval($value);
+        }
+    }
 }

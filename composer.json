@@ -14,7 +14,7 @@
   ],
   "require": {
     "php": "^7.1.10",
-    "elementaryframework/annotations": "^2.0"
+    "elementaryframework/annotations": "^2.1"
   },
   "keywords": [
     "orm",
