@@ -52,6 +52,13 @@ class LightQL
      */
     private static $_operators = array('!=', '<>', '<=', '>=', '=', '<', '>');
 
+    /**
+     * Register all annotations in the manager
+     */
+    public static function registerAnnotation()
+    {
+        $manager = Annotations::getManager();
+
         $manager->registerAnnotation("entity", "ElementaryFramework\\LightQL\\Annotations\\EntityAnnotation");
         $manager->registerAnnotation("column", "ElementaryFramework\\LightQL\\Annotations\\ColumnAnnotation");
         $manager->registerAnnotation("id", "ElementaryFramework\\LightQL\\Annotations\\IdAnnotation");
@@ -62,7 +69,10 @@ class LightQL
         $manager->registerAnnotation("manyToMany", "ElementaryFramework\\LightQL\\Annotations\\ManyToManyAnnotation");
         $manager->registerAnnotation("manyToOne", "ElementaryFramework\\LightQL\\Annotations\\ManyToOneAnnotation");
         $manager->registerAnnotation("oneToMany", "ElementaryFramework\\LightQL\\Annotations\\OneToManyAnnotation");
+        $manager->registerAnnotation("persistenceUnit", "ElementaryFramework\\LightQL\\Annotations\\PersistenceUnitAnnotation");
         $manager->registerAnnotation("namedQuery", "ElementaryFramework\\LightQL\\Annotations\\NamedQueryAnnotation");
+    }
+
     /**
      * The database name.
      *
