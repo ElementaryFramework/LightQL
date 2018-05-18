@@ -58,6 +58,7 @@ class LightQL
         $manager->registerAnnotation("unique", "ElementaryFramework\\LightQL\\Annotations\\UniqueAnnotation");
         $manager->registerAnnotation("autoIncrement", "ElementaryFramework\\LightQL\\Annotations\\AutoIncrementAnnotation");
         $manager->registerAnnotation("notNull", "ElementaryFramework\\LightQL\\Annotations\\NotNullAnnotation");
+        $manager->registerAnnotation("size", "ElementaryFramework\\LightQL\\Annotations\\SizeAnnotation");
         $manager->registerAnnotation("manyToMany", "ElementaryFramework\\LightQL\\Annotations\\ManyToManyAnnotation");
         $manager->registerAnnotation("manyToOne", "ElementaryFramework\\LightQL\\Annotations\\ManyToOneAnnotation");
         $manager->registerAnnotation("oneToMany", "ElementaryFramework\\LightQL\\Annotations\\OneToManyAnnotation");
