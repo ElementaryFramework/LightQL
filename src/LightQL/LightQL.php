@@ -52,6 +52,7 @@ class LightQL
      */
     private static $_operators = array('!=', '<>', '<=', '>=', '=', '<', '>');
 
+        $manager->registerAnnotation("autoIncrement", "ElementaryFramework\\LightQL\\Annotations\\AutoIncrementAnnotation");
     /**
      * The database name.
      *
