@@ -39,7 +39,6 @@ use ElementaryFramework\LightQL\Entities\Entity;
  *
  * Provide methods for all entity facades.
  *
- * @abstract
  * @category Sessions
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
