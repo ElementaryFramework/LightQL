@@ -58,6 +58,7 @@ class LightQL
         $manager->registerAnnotation("autoIncrement", "ElementaryFramework\\LightQL\\Annotations\\AutoIncrementAnnotation");
         $manager->registerAnnotation("manyToMany", "ElementaryFramework\\LightQL\\Annotations\\ManyToManyAnnotation");
         $manager->registerAnnotation("manyToOne", "ElementaryFramework\\LightQL\\Annotations\\ManyToOneAnnotation");
+        $manager->registerAnnotation("oneToMany", "ElementaryFramework\\LightQL\\Annotations\\OneToManyAnnotation");
     /**
      * The database name.
      *
