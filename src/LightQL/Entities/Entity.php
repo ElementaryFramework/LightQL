@@ -37,7 +37,9 @@ use ElementaryFramework\Annotations\IAnnotation;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 
 /**
- * LightQL - Database Manager Class
+ * Entity
+ *
+ * Object Oriented Mapping of a database row.
  *
  * @abstract
  * @category Library
