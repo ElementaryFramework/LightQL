@@ -39,7 +39,7 @@ use ElementaryFramework\LightQL\Exceptions\QueryException;
  *
  * Manage, run and get results from named queries.
  *
- * @category Sessions
+ * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/Query

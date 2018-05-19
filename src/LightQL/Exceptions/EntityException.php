@@ -35,9 +35,10 @@ namespace ElementaryFramework\LightQL\Exceptions;
 /**
  * Entity Exception
  *
- * @package LightQL
- * @author  Nana Axel <ax.lnana@outlook.com>
- * @link    http://lightql.na2axl.tk/docs/api/LightQL/Exceptions/EntityException
+ * @category Exceptions
+ * @package  LightQL
+ * @author   Nana Axel <ax.lnana@outlook.com>
+ * @link     http://lightql.na2axl.tk/docs/api/LightQL/Exceptions/EntityException
  */
 class EntityException extends \Exception
 {

@@ -37,8 +37,7 @@ namespace ElementaryFramework\LightQL\Entities;
  *
  * Provides default methods for all entities.
  *
- * @abstract
- * @category Interfaces
+ * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/IDatabaseEntity

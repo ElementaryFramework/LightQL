@@ -37,8 +37,7 @@ namespace ElementaryFramework\LightQL\Entities;
  *
  * Describe a database column.
  *
- * @abstract
- * @category Library
+ * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/Column

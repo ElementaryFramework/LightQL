@@ -41,8 +41,8 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
  *
  * Manage all entities, using one same persistence unit.
  *
- * @abstract
- * @category Library
+ * @final
+ * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/PersistenceUnit

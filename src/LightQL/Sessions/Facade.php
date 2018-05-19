@@ -46,6 +46,7 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
  *
  * Base class for all entity facades.
  *
+ * @abstract
  * @category Sessions
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>

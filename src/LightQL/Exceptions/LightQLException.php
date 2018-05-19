@@ -35,6 +35,7 @@ namespace ElementaryFramework\LightQL\Exceptions;
 /**
  * LightQL Exception
  *
+ * @category Exceptions
  * @package LightQL
  * @author  Nana Axel <ax.lnana@outlook.com>
  * @link    http://lightql.na2axl.tk/docs/api/LightQL/Exceptions/LightQLException

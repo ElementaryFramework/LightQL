@@ -42,7 +42,7 @@ use ElementaryFramework\LightQL\Exceptions\EntityException;
  * Object Oriented Mapping of a database row.
  *
  * @abstract
- * @category Library
+ * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/Entity

@@ -42,7 +42,7 @@ use ElementaryFramework\Annotations\Annotation;
  *
  * @usage('property' => true, 'inherited' => true)
  *
- * @category Annotation
+ * @category Annotations
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/AutoIncrementAnnotation
