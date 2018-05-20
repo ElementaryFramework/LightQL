@@ -74,12 +74,11 @@ abstract class Entity implements IEntity
     private $_reflection = null;
 
     /**
-     * The array of database column of this entity.
+     * The array of database columns of this entity.
      *
      * @var Column[]
      */
     private $_columns = array();
-
 
     /**
      * Entity constructor.
@@ -133,7 +132,7 @@ abstract class Entity implements IEntity
         foreach ($this->_columns as $property => $column) {
             if (array_key_exists($column->getName(), $this->raw)) {
                 $this->{$property} = $this->raw[$column->getName()];
-            } else {
+            } elseif (\is_null($this->{$property}) || $this->{$property} === null) {
                 $this->{$property} = $column->getDefault();
             }
         }
