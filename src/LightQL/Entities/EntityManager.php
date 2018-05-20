@@ -103,6 +103,7 @@ final class EntityManager
     {
         $entityAnnotation = Annotations::ofClass($entityClass, "@entity");
 
+        /** @var Entity $entity */
         $entity = new $entityClass;
         $columns = $entity->getColumns();
 
@@ -132,7 +133,7 @@ final class EntityManager
      * @param Entity $entity The entity to create.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
     public function persist(Entity &$entity)
     {
@@ -175,7 +176,7 @@ final class EntityManager
      * @param Entity $entity The entity to edit.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
     public function merge(Entity &$entity)
     {
@@ -215,7 +216,7 @@ final class EntityManager
      * @param Entity $entity The entity to delete.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
     public function delete(Entity &$entity)
     {

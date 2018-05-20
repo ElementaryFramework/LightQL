@@ -218,7 +218,7 @@ class LightQL
      *
      * @param array $options The lists of options
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
     public function __construct(array $options = null)
     {
@@ -381,7 +381,7 @@ class LightQL
     /**
      * Connect to the database / Instantiate PDO
      *
-     * @throws LightQLException When the connexion fails.
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException When the connexion fails.
      *
      * @return void
      */
@@ -414,7 +414,7 @@ class LightQL
      *
      * @param string $table The table's name
      *
-     * @return LightQL
+     * @return \ElementaryFramework\LightQL\LightQL
      */
     public function from(string $table): LightQL
     {
@@ -427,7 +427,7 @@ class LightQL
      *
      * @param string|array $condition SQL condition in valid format
      *
-     * @return LightQL
+     * @return \ElementaryFramework\LightQL\LightQL
      */
     public function where($condition): LightQL
     {
@@ -466,7 +466,7 @@ class LightQL
      * @param string $column The column to sort.
      * @param string $mode   The sort mode.
      *
-     * @return LightQL
+     * @return \ElementaryFramework\LightQL\LightQL
      */
     public function order(string $column, string $mode = "ASC"): LightQL
     {
@@ -480,7 +480,7 @@ class LightQL
      * @param int $offset The limit offset.
      * @param int $count  The number of elements after the offset.
      *
-     * @return LightQL
+     * @return \ElementaryFramework\LightQL\LightQL
      */
     public function limit(int $offset, int $count): LightQL
     {
@@ -493,7 +493,7 @@ class LightQL
      *
      * @param string $column The column used to group results.
      *
-     * @return LightQL
+     * @return \ElementaryFramework\LightQL\LightQL
      */
     public function groupBy(string $column): LightQL
     {
@@ -504,7 +504,7 @@ class LightQL
     /**
      * Add a distinct clause.
      *
-     * @return LightQL
+     * @return \ElementaryFramework\LightQL\LightQL
      */
     public function distinct(): LightQL
     {
@@ -518,7 +518,7 @@ class LightQL
      * @param mixed $columns The fields to select. This value can be an array of fields,
      *                       or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return \PDOStatement
      */
@@ -533,7 +533,7 @@ class LightQL
      * @param mixed $columns The fields to select. This value can be an array of fields,
      *                       or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return \PDOStatement
      */
@@ -591,7 +591,7 @@ class LightQL
     }
 
     /**
-     * Reset all clauses
+     * Reset all clauses.
      */
     protected function resetClauses()
     {
@@ -608,7 +608,7 @@ class LightQL
      * @param mixed $columns The fields to select. This value can be an array of fields,
      *                       or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return array
      */
@@ -629,7 +629,7 @@ class LightQL
      * @param mixed $columns The fields to select. This value can be an array of fields,
      *                       or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return array
      */
@@ -651,7 +651,7 @@ class LightQL
      * @param mixed $columns The fields to select. This value can be an array of fields,
      *                       or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return array
      */
@@ -674,7 +674,7 @@ class LightQL
      *                       or a string of fields (according to the SELECT SQL query syntax).
      * @param mixed $params  The information used for JOIN.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return \PDOStatement
      */
@@ -690,7 +690,7 @@ class LightQL
      *                              or a string of fields (according to the SELECT SQL query syntax).
      * @param string|array $params  The information used for JOIN.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return \PDOStatement
      */
@@ -735,7 +735,7 @@ class LightQL
      *                       or a string of fields (according to the SELECT SQL query syntax).
      * @param mixed $params  The information used for JOIN.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return array
      */
@@ -758,7 +758,7 @@ class LightQL
      *                       or a string of fields (according to the SELECT SQL query syntax).
      * @param mixed $params  The information used for JOIN.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return array
      */
@@ -780,7 +780,7 @@ class LightQL
      * @param string|array $columns The fields to select. This value can be an array of fields,
      *                              or a string of fields (according to the SELECT SQL query syntax).
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return int|array
      */
@@ -798,7 +798,7 @@ class LightQL
             if (null === $this->_group) {
                 $this->resetClauses();
                 $data = $getFieldsData->fetch();
-                return (int)$data['lightql_count'];
+                return (int) $data['lightql_count'];
             }
 
             $this->resetClauses();
@@ -819,7 +819,7 @@ class LightQL
      *
      * @param array $fieldsAndValues The fields and the associated values to insert.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return boolean
      */
@@ -855,7 +855,7 @@ class LightQL
      * @param array $values  The array of list of values to insert
      *                       into the specified fields.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return boolean
      */
@@ -885,7 +885,7 @@ class LightQL
      *
      * @param array $fieldsAndValues The fields and the associated values to update.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return boolean
      */
@@ -919,7 +919,7 @@ class LightQL
     /**
      * Deletes data in table.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return boolean
      */
@@ -940,7 +940,7 @@ class LightQL
     /**
      * Truncates a table.
      *
-     * @throws LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
      * @return boolean
      */
@@ -964,9 +964,9 @@ class LightQL
      * @param string $query The query to execute
      * @param int    $mode  The fetch mode
      *
-     * @return \PDOStatement
      * @uses \PDO::query()
      *
+     * @return \PDOStatement
      */
     public function query(string $query, int $mode = \PDO::FETCH_LAZY): \PDOStatement
     {
@@ -976,6 +976,8 @@ class LightQL
     /**
      * Gets the last inserted id by an
      * INSERT query.
+     *
+     * @uses \PDO::lastInsertId()
      *
      * @return int
      */
@@ -998,16 +1000,37 @@ class LightQL
         return $this->_pdo->quote($value);
     }
 
+    /**
+     * Disable auto commit mode and start a transaction.
+     *
+     * @uses \PDO::beginTransaction()
+     *
+     * @return bool
+     */
     public function beginTransaction(): bool
     {
         return $this->_pdo->beginTransaction();
     }
 
+    /**
+     * Commit changes made during a transaction.
+     *
+     * @uses \PDO::commit()
+     *
+     * @return bool
+     */
     public function commit(): bool
     {
         return $this->_pdo->commit();
     }
 
+    /**
+     * Rollback changes made during a transaction.
+     *
+     * @uses \PDO::rollBack()
+     *
+     * @return bool
+     */
     public function rollback(): bool
     {
         return $this->_pdo->rollBack();
