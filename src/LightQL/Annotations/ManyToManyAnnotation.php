@@ -56,13 +56,6 @@ class ManyToManyAnnotation extends Annotation
     public $entity;
 
     /**
-     * The entity property which map the many-to-many relation.
-     *
-     * @var string
-     */
-    public $mappedBy;
-
-    /**
      * The referenced table name of the many-to-many relation.
      *
      * @var string

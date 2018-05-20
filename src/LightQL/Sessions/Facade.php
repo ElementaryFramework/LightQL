@@ -325,7 +325,7 @@ abstract class Facade implements IFacade
     {
         $manyToMany = Annotations::ofProperty($entity, $property, "@manyToMany");
         $referencedEntityAnnotations = Annotations::ofClass($manyToMany[0]->entity, "@entity");
-        $mappedPropertyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $manyToMany[0]->mappedBy, "@manyToMany");
+        $mappedPropertyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToMany");
 
         if ($manyToMany[0]->referencedTable !== $mappedPropertyAnnotation[0]->referencedTable) {
             throw new EntityException("Inconsistent @manyToMany annotation. The referenced table is different on both sides.");
@@ -364,7 +364,7 @@ abstract class Facade implements IFacade
     {
         $oneToMany = Annotations::ofProperty($entity, $property, "@oneToMany");
         $referencedEntityAnnotations = Annotations::ofClass($oneToMany[0]->entity, "@entity");
-        $mappedPropertyAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $oneToMany[0]->mappedBy, "@manyToOne");
+        $mappedPropertyAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToOne");
 
         $lightql = $this->entityManager->getLightQL();
 

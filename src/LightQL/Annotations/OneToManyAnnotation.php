@@ -54,11 +54,4 @@ class OneToManyAnnotation extends Annotation
      * @var string
      */
     public $entity;
-
-    /**
-     * The entity property which map the many-to-many relation.
-     *
-     * @var string
-     */
-    public $mappedBy;
 }
