@@ -122,9 +122,11 @@ final class EntityManager
             ->where($where)
             ->selectFirst();
 
-        $entity->hydrate($raw);
+        if (is_array($raw)) {
+            $entity->hydrate($raw);
+        }
 
-        return$entity;
+        return $entity;
     }
 
     /**
