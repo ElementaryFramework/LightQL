@@ -186,7 +186,7 @@ abstract class Facade implements IFacade
             ->from($annotations[0]->table)
             ->selectArray();
 
-        return $this->_parseRawEntites($rawEntities, $annotations);
+        return $this->_parseRawEntities($rawEntities, $annotations);
     }
 
     /**
@@ -211,7 +211,7 @@ abstract class Facade implements IFacade
             ->limit($start, $length)
             ->selectArray();
 
-        return $this->_parseRawEntites($rawEntities, $annotations);
+        return $this->_parseRawEntities($rawEntities, $annotations);
     }
 
     /**
@@ -419,7 +419,7 @@ abstract class Facade implements IFacade
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
-    private function _parseRawEntites($rawEntities, $annotations): array
+    private function _parseRawEntities($rawEntities, $annotations): array
     {
         $entities = array();
 
