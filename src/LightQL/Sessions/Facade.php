@@ -33,6 +33,7 @@
 namespace ElementaryFramework\LightQL\Sessions;
 
 use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
@@ -104,7 +105,7 @@ abstract class Facade implements IFacade
      *
      * @throws FacadeException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
     public function create(Entity &$entity)
     {
@@ -122,7 +123,7 @@ abstract class Facade implements IFacade
      *
      * @throws FacadeException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
     public function edit(Entity &$entity)
     {
@@ -140,7 +141,7 @@ abstract class Facade implements IFacade
      *
      * @throws FacadeException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
     public function delete(Entity &$entity)
     {
@@ -270,6 +271,7 @@ abstract class Facade implements IFacade
         $namedQueries = Annotations::ofClass($this->getEntityClassName(), "@namedQuery");
         $query = null;
 
+        /** @var NamedQueryAnnotation $namedQuery */
         foreach ($namedQueries as $namedQuery) {
             if ($namedQuery->name === $name) {
                 $query = $namedQuery->query;
@@ -422,6 +424,7 @@ abstract class Facade implements IFacade
         $entities = array();
 
         foreach ($rawEntities as $rawEntity) {
+            /** @var Entity $entity */
             $entity = $this->_class->newInstance($rawEntity);
 
             if ($annotations[0]->fetchMode === Entity::FETCH_EAGER) {
