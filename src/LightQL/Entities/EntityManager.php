@@ -35,6 +35,7 @@ namespace ElementaryFramework\LightQL\Entities;
 use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
+use ElementaryFramework\LightQL\Exceptions\EntityException;
 
 /**
  * Entity Manager
@@ -150,12 +151,21 @@ final class EntityManager
             }
         }
 
-        $this->_lightql
-            ->from($entityAnnotation[0]->table)
-            ->insert($fieldAndValues);
+        $this->_lightql->beginTransaction();
+        try {
+            $this->_lightql
+                ->from($entityAnnotation[0]->table)
+                ->insert($fieldAndValues);
 
-        if ($autoIncrementProperty !== null) {
-            $entity->$autoIncrementProperty = $this->_lightql->lastInsertID();
+            if ($autoIncrementProperty !== null) {
+                $entity->$autoIncrementProperty = $this->_lightql->lastInsertID();
+            }
+
+            $this->_lightql->commit();
+        } catch (\Exception $e) {
+            $this->_lightql->rollback();
+
+            throw new EntityException($e->getMessage());
         }
     }
 
@@ -184,10 +194,19 @@ final class EntityManager
             }
         }
 
-        $this->_lightql
-            ->from($entityAnnotation[0]->table)
-            ->where($where)
-            ->update($fieldAndValues);
+        $this->_lightql->beginTransaction();
+        try {
+            $this->_lightql
+                ->from($entityAnnotation[0]->table)
+                ->where($where)
+                ->update($fieldAndValues);
+
+            $this->_lightql->commit();
+        } catch (\Exception $e) {
+            $this->_lightql->rollback();
+
+            throw new EntityException($e->getMessage());
+        }
     }
 
     /**
@@ -217,19 +236,31 @@ final class EntityManager
             }
         }
 
-        $this->_lightql
-            ->from($entityAnnotation[0]->table)
-            ->where($where)
-            ->delete();
+        $this->_lightql->beginTransaction();
+        try {
+            $this->_lightql
+                ->from($entityAnnotation[0]->table)
+                ->where($where)
+                ->delete();
 
-        if (count($pk) > 0) {
-            foreach ($pk as $item) {
-                $entity->$item = null;
+            if (count($pk) > 0) {
+                foreach ($pk as $item) {
+                    $entity->$item = null;
+                }
             }
+
+            $this->_lightql->commit();
+        } catch (\Exception $e) {
+            $this->_lightql->rollback();
+
+            throw new EntityException($e->getMessage());
         }
     }
 
     /**
+     * Gets the LightQL instance associated
+     * to this entity manager.
+     * 
      * @return LightQL
      */
     public function getLightQL(): LightQL

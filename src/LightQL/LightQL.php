@@ -986,6 +986,21 @@ class LightQL
         return $this->_pdo->quote($value);
     }
 
+    public function beginTransaction(): bool
+    {
+        return $this->_pdo->beginTransaction();
+    }
+
+    public function commit(): bool
+    {
+        return $this->_pdo->commit();
+    }
+
+    public function rollback(): bool
+    {
+        return $this->_pdo->rollBack();
+    }
+
     /**
      * Converts a value to a string.
      *
