@@ -26,7 +26,7 @@
  * @author    Axel Nana <ax.lnana@outlook.com>
  * @copyright 2018 Aliens Group, Inc.
  * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
- * @version   GIT: 0.0.1
+ * @version   1.0.0
  * @link      http://lightql.na2axl.tk
  */
 
