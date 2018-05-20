@@ -13,7 +13,8 @@
     }
   ],
   "require": {
-    "php": "^7.1.10"
+    "php": "^7.1.10",
+    "elementaryframework/annotations": "^2.0.1"
   },
   "keywords": [
     "orm",
@@ -22,7 +23,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "LightQL\\": "src/LightQL/"
+      "ElementaryFramework\\LightQL\\": "src/LightQL/"
     }
   }
 }
