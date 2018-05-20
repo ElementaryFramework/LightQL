@@ -412,6 +412,37 @@ abstract class Facade implements IFacade
     }
 
     /**
+     * @param IEntity $entity
+     * @param string $property
+     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     */
+    private function _fetchOneToOne(&$entity, $property)
+    {
+        $oneToOne = Annotations::ofProperty($entity, $property, "@oneToOne");
+        $referencedEntityAnnotations = Annotations::ofClass($oneToOne[0]->entity, "@entity");
+        $mappedPropertyAnnotation = Annotations::ofProperty($oneToOne[0]->entity, $this->_getReferencePropertyName($this->getEntityClassName()), "@oneToOne");
+
+        $lightql = $this->entityManager->getLightQL();
+
+        $result = $lightql
+            ->from($referencedEntityAnnotations[0]->table)
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToOne[0]->referencedColumn}" => $lightql->quote($entity->get($mappedPropertyAnnotation[0]->referencedColumn))))
+            ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
+
+        $propertyName = $this->_getReferencePropertyName($oneToOne[0]->entity);
+        $className = $oneToOne[0]->entity;
+
+        $entity->$propertyName = $result;
+
+        if ($result !== null) {
+            $entity->$propertyName = new $className($result);
+            $referencedPropertyName = $this->_getReferencePropertyName($this->getEntityClassName());
+            $entity->{$propertyName}->{$referencedPropertyName} = $entity;
+        }
+    }
+
+    /**
      * @param $rawEntities
      * @param $annotations
      * @return array
@@ -437,6 +468,8 @@ abstract class Facade implements IFacade
                         $this->_fetchOneToMany($entity, $property->name);
                     } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToOne")) {
                         $this->_fetchManyToOne($entity, $property->name);
+                    } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToOne")) {
+                        $this->_fetchOneToOne($entity, $property->name);
                     }
                 }
             }
