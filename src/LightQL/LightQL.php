@@ -33,6 +33,18 @@
 namespace ElementaryFramework\LightQL;
 
 use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\LightQL\Annotations\AutoIncrementAnnotation;
+use ElementaryFramework\LightQL\Annotations\ColumnAnnotation;
+use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
+use ElementaryFramework\LightQL\Annotations\IdAnnotation;
+use ElementaryFramework\LightQL\Annotations\ManyToManyAnnotation;
+use ElementaryFramework\LightQL\Annotations\ManyToOneAnnotation;
+use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
+use ElementaryFramework\LightQL\Annotations\NotNullAnnotation;
+use ElementaryFramework\LightQL\Annotations\OneToManyAnnotation;
+use ElementaryFramework\LightQL\Annotations\PersistenceUnitAnnotation;
+use ElementaryFramework\LightQL\Annotations\SizeAnnotation;
+use ElementaryFramework\LightQL\Annotations\UniqueAnnotation;
 use ElementaryFramework\LightQL\Exceptions\LightQLException;
 
 /**
@@ -59,18 +71,18 @@ class LightQL
     {
         $manager = Annotations::getManager();
 
-        $manager->registerAnnotation("entity", "ElementaryFramework\\LightQL\\Annotations\\EntityAnnotation");
-        $manager->registerAnnotation("column", "ElementaryFramework\\LightQL\\Annotations\\ColumnAnnotation");
-        $manager->registerAnnotation("id", "ElementaryFramework\\LightQL\\Annotations\\IdAnnotation");
-        $manager->registerAnnotation("unique", "ElementaryFramework\\LightQL\\Annotations\\UniqueAnnotation");
-        $manager->registerAnnotation("autoIncrement", "ElementaryFramework\\LightQL\\Annotations\\AutoIncrementAnnotation");
-        $manager->registerAnnotation("notNull", "ElementaryFramework\\LightQL\\Annotations\\NotNullAnnotation");
-        $manager->registerAnnotation("size", "ElementaryFramework\\LightQL\\Annotations\\SizeAnnotation");
-        $manager->registerAnnotation("manyToMany", "ElementaryFramework\\LightQL\\Annotations\\ManyToManyAnnotation");
-        $manager->registerAnnotation("manyToOne", "ElementaryFramework\\LightQL\\Annotations\\ManyToOneAnnotation");
-        $manager->registerAnnotation("oneToMany", "ElementaryFramework\\LightQL\\Annotations\\OneToManyAnnotation");
-        $manager->registerAnnotation("persistenceUnit", "ElementaryFramework\\LightQL\\Annotations\\PersistenceUnitAnnotation");
-        $manager->registerAnnotation("namedQuery", "ElementaryFramework\\LightQL\\Annotations\\NamedQueryAnnotation");
+        $manager->registerAnnotation("entity", EntityAnnotation::class);
+        $manager->registerAnnotation("column", ColumnAnnotation::class);
+        $manager->registerAnnotation("id", IdAnnotation::class);
+        $manager->registerAnnotation("unique", UniqueAnnotation::class);
+        $manager->registerAnnotation("autoIncrement", AutoIncrementAnnotation::class);
+        $manager->registerAnnotation("notNull", NotNullAnnotation::class);
+        $manager->registerAnnotation("size", SizeAnnotation::class);
+        $manager->registerAnnotation("manyToMany", ManyToManyAnnotation::class);
+        $manager->registerAnnotation("manyToOne", ManyToOneAnnotation::class);
+        $manager->registerAnnotation("oneToMany", OneToManyAnnotation::class);
+        $manager->registerAnnotation("persistenceUnit", PersistenceUnitAnnotation::class);
+        $manager->registerAnnotation("namedQuery", NamedQueryAnnotation::class);
     }
 
     /**
