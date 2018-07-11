@@ -33,9 +33,9 @@
 namespace ElementaryFramework\LightQL\Entities;
 
 use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
-use ElementaryFramework\LightQL\Exceptions\EntityException;
 
 /**
  * Entity Manager
@@ -70,6 +70,8 @@ final class EntityManager
      * EntityManager constructor.
      *
      * @param PersistenceUnit $persistenceUnit The persistence unit to use in this manager.
+     *
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
     public function __construct(PersistenceUnit $persistenceUnit)
     {
@@ -92,12 +94,13 @@ final class EntityManager
      * Finds an entity from the database.
      *
      * @param string $entityClass The class name of the entity to find.
-     * @param mixed  $id          The value of the primary key.
+     * @param mixed $id The value of the primary key.
      *
      * @return Entity
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ReflectionException
      */
     public function find(string $entityClass, $id): Entity
     {
@@ -109,12 +112,25 @@ final class EntityManager
 
         $where = array();
 
-        foreach ($columns as $property => $column) {
-            if (count($where) === 0) {
-                if ($column->isPrimaryKey) {
-                    $where[$column->getName()] = $this->_lightql->quote($id);
+        if ($id instanceof IPrimaryKey) {
+            $pkClass = new \ReflectionClass($id);
+            $properties = $pkClass->getProperties();
+
+            /** @var \ReflectionProperty $property */
+            foreach ($properties as $property) {
+                if (Annotations::propertyHasAnnotation($id, $property->getName(), "@id") && Annotations::propertyHasAnnotation($id, $property->getName(), "@column")) {
+                    $name = Annotations::ofProperty($id, $property->getName(), "@column")[0]->name;
+                    $where[$name] = $this->_lightql->quote($id->{$property->getName()});
                 }
-            } else break;
+            }
+        } else {
+            foreach ($columns as $property => $column) {
+                if (count($where) === 0) {
+                    if ($column->isPrimaryKey) {
+                        $where[$column->getName()] = $this->_lightql->quote($id);
+                    }
+                } else break;
+            }
         }
 
         $raw = $this->_lightql
@@ -263,7 +279,7 @@ final class EntityManager
     /**
      * Gets the LightQL instance associated
      * to this entity manager.
-     * 
+     *
      * @return LightQL
      */
     public function getLightQL(): LightQL

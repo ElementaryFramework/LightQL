@@ -87,6 +87,7 @@ abstract class Entity implements IEntity
      *
      * @throws EntityException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws \ReflectionException
      */
     public function __construct(array $data = array())
     {
@@ -96,6 +97,8 @@ abstract class Entity implements IEntity
 
         $this->_reflection = new \ReflectionClass($this);
         $properties = $this->_reflection->getProperties();
+
+        $pkFound = false;
 
         foreach ($properties as $property) {
             if ($this->_hasAnnotation($property->name, "@column")) {
@@ -113,6 +116,12 @@ abstract class Entity implements IEntity
                 $column->isAutoIncrement = $this->_hasAnnotation($property->name, '@autoIncrement');
 
                 $this->_columns[$property->name] = $column;
+
+                if ($column->isPrimaryKey && $pkFound) {
+                    throw new EntityException("The entity has declared more than one primary keys. Consider using a class implementing the IPrimaryKey interface instead.");
+                }
+
+                $pkFound = $column->isPrimaryKey;
             }
         }
 
