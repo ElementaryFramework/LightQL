@@ -58,6 +58,14 @@ class Column
 
     public $isUniqueKey;
 
+    public $isOneToMany;
+
+    public $isManyToOne;
+
+    public $isManyToMany;
+
+    public $isOneToOne;
+
     public function __construct(string $name, string $type, array $size, $default = null)
     {
         $this->_name = $name;

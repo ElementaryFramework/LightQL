@@ -35,6 +35,7 @@ namespace ElementaryFramework\LightQL\Entities;
 use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\Annotations\IAnnotation;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
+use ElementaryFramework\LightQL\Exceptions\AnnotationException;
 
 /**
  * Entity
@@ -86,7 +87,7 @@ abstract class Entity implements IEntity
      * @param array $data The raw database data.
      *
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      * @throws \ReflectionException
      */
     public function __construct(array $data = array())
@@ -114,6 +115,10 @@ abstract class Entity implements IEntity
                 $column->isPrimaryKey = $this->_hasAnnotation($property->name, '@id');
                 $column->isUniqueKey = $column->isPrimaryKey || $this->_hasAnnotation($property->name, '@unique');
                 $column->isAutoIncrement = $this->_hasAnnotation($property->name, '@autoIncrement');
+                $column->isManyToMany = $this->_hasAnnotation($property->name, '@manyToMany');
+                $column->isManyToOne = $this->_hasAnnotation($property->name, '@manyToOne');
+                $column->isOneToMany = $this->_hasAnnotation($property->name, '@oneToMany');
+                $column->isOneToOne = $this->_hasAnnotation($property->name, '@oneToOne');
 
                 $this->_columns[$property->name] = $column;
 
