@@ -329,28 +329,21 @@ abstract class Facade implements IFacade
     private function _fetchManyToMany(&$entity, $property)
     {
         $manyToMany = Annotations::ofProperty($entity, $property, "@manyToMany");
-        $referencedEntityAnnotations = Annotations::ofClass($manyToMany[0]->entity, "@entity");
-        $mappedPropertyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToMany");
+        $entityAnnotations = Annotations::ofClass($entity, "@entity");
 
-        if ($manyToMany[0]->referencedTable !== $mappedPropertyAnnotation[0]->referencedTable) {
+        $mappedPropertyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToMany");
+        $referencedEntityAnnotations = Annotations::ofClass($manyToMany[0]->entity, "@entity");
+
+        if ($entityAnnotations[0]->table !== $referencedEntityAnnotations[0]->table) {
             throw new EntityException("Inconsistent @manyToMany annotation. The referenced table is different on both sides.");
         }
 
         $lightql = $this->entityManager->getLightQL();
 
         $results = $lightql
-            ->from($manyToMany[0]->referencedTable)
-            ->where(array("{$manyToMany[0]->referencedTable}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($manyToMany[0]->column))))
-            ->joinArray(
-                "{$referencedEntityAnnotations[0]->table}.*",
-                array(
-                    array(
-                        "side" => "LEFT",
-                        "table" => $referencedEntityAnnotations[0]->table,
-                        "cond" => "{$manyToMany[0]->referencedTable}.{$mappedPropertyAnnotation[0]->referencedColumn} = {$referencedEntityAnnotations[0]->table}.{$mappedPropertyAnnotation[0]->column}"
-                    )
-                )
-            );
+            ->from($referencedEntityAnnotations[0]->table)
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($manyToMany[0]->column))))
+            ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
         $propertyName = $this->_getCollectionPropertyName($manyToMany[0]->entity);
         $entity->$propertyName = array_map(function($item) use ($manyToMany) {
@@ -406,12 +399,12 @@ abstract class Facade implements IFacade
             ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->quote($entity->get($manyToOne[0]->column))))
             ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
-        $propertyName = $this->_getCollectionPropertyName($manyToOne[0]->entity);
-        $entity->$propertyName = array_map(function($item) use ($manyToOne, $entity) {
-            $propertyName = $this->_getReferencePropertyName($this->getEntityClassName());
+        $collectionPropertyName = $this->_getCollectionPropertyName($manyToOne[0]->entity);
+        $entity->$collectionPropertyName = array_map(function($item) use ($manyToOne, $entity) {
+            $referencePropertyName = $this->_getReferencePropertyName($this->getEntityClassName());
             $className = $manyToOne[0]->entity;
             $e = new $className($item);
-            $e->$propertyName = $entity;
+            $e->$referencePropertyName = $entity;
             return $e;
         }, $results);
     }
@@ -480,24 +473,24 @@ abstract class Facade implements IFacade
      */
     private function _parseRawEntity($rawEntity, $annotations): Entity
     {
-            /** @var Entity $entity */
-            $entity = $this->_class->newInstance($rawEntity);
+        /** @var Entity $entity */
+        $entity = $this->_class->newInstance($rawEntity);
 
-            if ($annotations[0]->fetchMode === Entity::FETCH_EAGER) {
-                $properties = $this->_class->getProperties();
+        if ($annotations[0]->fetchMode === Entity::FETCH_EAGER) {
+            $properties = $this->_class->getProperties();
 
-                foreach ($properties as $property) {
-                    if (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
-                        $this->_fetchManyToMany($entity, $property->name);
-                    } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToMany")) {
-                        $this->_fetchOneToMany($entity, $property->name);
-                    } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToOne")) {
-                        $this->_fetchManyToOne($entity, $property->name);
-                    } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToOne")) {
-                        $this->_fetchOneToOne($entity, $property->name);
-                    }
+            foreach ($properties as $property) {
+                if (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
+                    $this->_fetchManyToMany($entity, $property->name);
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToMany")) {
+                    $this->_fetchOneToMany($entity, $property->name);
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToOne")) {
+                    $this->_fetchManyToOne($entity, $property->name);
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToOne")) {
+                    $this->_fetchOneToOne($entity, $property->name);
                 }
             }
+        }
 
         return $entity;
     }
