@@ -22,6 +22,7 @@ create, edit, delete, find entities and much more without writing a SQL query.
 ```
 
 ### 2. Create entities
+
 ```php
 <?php
 
@@ -215,6 +216,11 @@ abstract class BaseController
         // Register persistence unit
         PersistenceUnit::register("myAppPersistenceUnit", __DIR__ . "/files/persistenceUnit.json");
     }
+
+    public function renderView(string $view, array $data)
+    {
+        // Your logic to render static views
+    }
 }
 ```
 
@@ -293,4 +299,4 @@ You can do the same with an `UserController`
 
 &copy; 2018 - Aliens Group
 
-Licensed under MIT ([read license](https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE)) 
+Licensed under MIT ([read license](https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE))
