@@ -81,7 +81,7 @@ abstract class Facade implements IFacade
     public function __construct($class)
     {
         if (!Annotations::propertyHasAnnotation($this, "entityManager", "@persistenceUnit")) {
-            throw new FacadeException("Cannot create the entity facade. The property manager has no @persistenceUnit annotation.");
+            throw new FacadeException("Cannot create the entity facade. The property entityManager has no @persistenceUnit annotation.");
         }
 
         if (is_subclass_of($class, Entity::class)) {
