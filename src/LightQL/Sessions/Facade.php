@@ -165,7 +165,12 @@ abstract class Facade implements IFacade
      */
     public function find($id): Entity
     {
-        return $this->entityManager->find($this->getEntityClassName(), $id);
+        $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
+
+        return $this->_parseRawEntity(
+            $this->entityManager->find($this->getEntityClassName(), $id),
+            $annotations
+        );
     }
 
     /**
@@ -455,6 +460,26 @@ abstract class Facade implements IFacade
         $entities = array();
 
         foreach ($rawEntities as $rawEntity) {
+            array_push($entities, $this->_parseRawEntity($rawEntity, $annotations));
+        }
+
+        return $entities;
+    }
+
+    /**
+     * Parses raw data to Entity.
+     *
+     * @param array $rawEntity   Raw entity data provided from database.
+     * @param array $annotations The set of entity annotations.
+     *
+     * @return Entity
+     *
+     * @throws EntityException
+     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     */
+    private function _parseRawEntity($rawEntity, $annotations): Entity
+    {
             /** @var Entity $entity */
             $entity = $this->_class->newInstance($rawEntity);
 
@@ -474,9 +499,6 @@ abstract class Facade implements IFacade
                 }
             }
 
-            array_push($entities, $entity);
-        }
-
-        return $entities;
+        return $entity;
     }
 }

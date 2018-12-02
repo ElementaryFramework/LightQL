@@ -138,11 +138,7 @@ final class EntityManager
             ->where($where)
             ->selectFirst();
 
-        if (is_array($raw)) {
-            $entity->hydrate($raw);
-        }
-
-        return $entity;
+        return $raw;
     }
 
     /**
