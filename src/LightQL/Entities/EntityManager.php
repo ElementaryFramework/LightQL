@@ -163,7 +163,7 @@ final class EntityManager
         $autoIncrementProperty = null;
 
         foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->$property);
+            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
 
             if ($autoIncrementProperty === null && $column->isAutoIncrement) {
                 $autoIncrementProperty = $property;
@@ -205,11 +205,30 @@ final class EntityManager
 
         $where = array();
 
+        $entityReflection = new \ReflectionClass($entity);
+        $entityProperties = $entityReflection->getProperties();
+
+        /** @var \ReflectionProperty $property */
+        foreach ($entityProperties as $property) {
+            $id = $entity->{$property->getName()};
+            if ($id instanceof IPrimaryKey) {
+                $propertyReflection = new \ReflectionClass($id);
+                $propertyProperties = $propertyReflection->getProperties();
+
+                foreach ($propertyProperties as $key) {
+                    $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
+                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                }
+
+                break;
+            }
+        }
+
         foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->$property);
+            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
 
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] =  $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
             }
         }
 
@@ -245,6 +264,26 @@ final class EntityManager
 
         $where = array();
         $pk = array();
+
+        $entityReflection = new \ReflectionClass($entity);
+        $entityProperties = $entityReflection->getProperties();
+
+        /** @var \ReflectionProperty $property */
+        foreach ($entityProperties as $property) {
+            $id = $entity->{$property->getName()};
+            if ($id instanceof IPrimaryKey) {
+                $propertyReflection = new \ReflectionClass($id);
+                $propertyProperties = $propertyReflection->getProperties();
+
+                foreach ($propertyProperties as $key) {
+                    $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
+                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $pk[] = $property->getName();
+                }
+
+                break;
+            }
+        }
 
         foreach ($columns as $property => $column) {
             $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->$property);
