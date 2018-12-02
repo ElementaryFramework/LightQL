@@ -124,9 +124,9 @@ class Query
         return $results;
     }
 
-    public function getFirstResult(): IEntity
+    public function getFirstResult(): ?IEntity
     {
         $results = $this->getResults();
-        return $results[0];
+        return count($results) > 0 ? $results[0] : null;
     }
 }
