@@ -49,9 +49,16 @@ use ElementaryFramework\Annotations\Annotation;
 class OneToManyAnnotation extends Annotation
 {
     /**
-     * The referenced entity in this many-to-one relation.
+     * The referenced entity in this one-to-many relation.
      *
      * @var string
      */
     public $entity;
+
+    /**
+     * The entity column in one-to-many relation.
+     *
+     * @var string
+     */
+    public $column;
 }

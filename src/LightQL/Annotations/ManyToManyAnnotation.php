@@ -56,13 +56,6 @@ class ManyToManyAnnotation extends Annotation
     public $entity;
 
     /**
-     * The referenced table name of the many-to-many relation.
-     *
-     * @var string
-     */
-    public $referencedTable;
-
-    /**
      * The column name of the many-to-many relation.
      *
      * @var string
