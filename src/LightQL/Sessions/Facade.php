@@ -113,7 +113,24 @@ abstract class Facade implements IFacade
             throw new FacadeException("Cannot create entity. The type of the entity is not valid for this facade.");
         }
 
-        $this->entityManager->persist($entity);
+        try {
+            $this->entityManager->persist($entity);
+
+            $columns = $entity->getColumns();
+            foreach ($columns as $property => $column) {
+                if ($column->isOneToMany) {
+                    $this->_fetchOneToMany($entity, $property);
+                } elseif ($column->isManyToOne) {
+                    $this->_fetchManyToOne($entity, $property);
+                } elseif ($column->isManyToMany) {
+                    $this->_fetchManyToMany($entity, $property);
+                } elseif ($column->isOneToOne) {
+                    $this->_fetchOneToOne($entity, $property);
+                }
+            }
+        } catch (\Exception $e) {
+            throw new FacadeException($e->getMessage());
+        }
     }
 
     /**
