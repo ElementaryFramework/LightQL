@@ -550,15 +550,15 @@ class LightQL
                     $_fields .= "{$alias}, ";
                 } elseif (is_string($column)) {
                     $_fields .= "{$column} AS {$alias}, ";
-                } else {
-                    throw new LightQLException(
-                        "Invalid data given for the parameter \$columns." .
-                        " Only string and array are supported."
-                    );
                 }
             }
 
             $columns = trim($_fields, ", ");
+        } elseif (!is_string($columns)) {
+            throw new LightQLException(
+                "Invalid data given for the parameter \$columns." .
+                " Only string and array are supported."
+            );
         }
 
         // Constructing the SELECT query string
