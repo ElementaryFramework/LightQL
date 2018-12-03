@@ -40,12 +40,15 @@ use ElementaryFramework\Annotations\Exceptions\AnnotationException;
  *
  * Used to set the size of a mapped property.
  *
+ * This annotation have to be associated with the @column
+ * annotation to take effect.
+ *
  * @usage('property' => true, 'inherited' => true)
  *
  * @category Annotations
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/IdAnnotation
+ * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/SizeAnnotation
  */
 class SizeAnnotation extends Annotation
 {

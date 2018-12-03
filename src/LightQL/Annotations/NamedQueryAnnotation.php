@@ -41,6 +41,9 @@ use ElementaryFramework\Annotations\Exceptions\AnnotationException;
  * Used to list the set of SQL queries associated to
  * an entity.
  *
+ * This annotation have to be associated with the @entity
+ * annotation to take effect.
+ *
  * @usage('class' => true, 'multiple' => true, 'inherited' => true)
  *
  * @category Annotations

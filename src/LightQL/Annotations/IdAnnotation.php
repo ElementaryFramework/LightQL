@@ -39,6 +39,9 @@ use ElementaryFramework\Annotations\Annotation;
  *
  * Used to define a property as the primary key of a table.
  *
+ * This annotation have to be associated with the @column
+ * annotation to take effect.
+ *
  * @usage('property' => true, 'inherited' => true)
  *
  * @category Annotations

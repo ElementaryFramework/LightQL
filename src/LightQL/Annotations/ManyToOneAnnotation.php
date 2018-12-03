@@ -39,6 +39,9 @@ use ElementaryFramework\Annotations\Annotation;
  *
  * Used to define that a property is in a many-to-one relation with another.
  *
+ * This annotation have to be associated with the @column
+ * annotation to take effect.
+ *
  * @usage('property' => true, 'inherited' => true)
  *
  * @category Annotations

@@ -40,6 +40,9 @@ use ElementaryFramework\Annotations\Exceptions\AnnotationException;
  *
  * Used to set a property as a not null value.
  *
+ * This annotation have to be associated with the @column
+ * annotation to take effect.
+ *
  * @usage('property' => true, 'inherited' => true)
  *
  * @category Annotations

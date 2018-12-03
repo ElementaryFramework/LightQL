@@ -46,7 +46,7 @@ use ElementaryFramework\Annotations\Exceptions\AnnotationException;
  * @category Annotations
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/IdAnnotation
+ * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/PersistenceUnitAnnotation
  */
 class PersistenceUnitAnnotation extends Annotation
 {
