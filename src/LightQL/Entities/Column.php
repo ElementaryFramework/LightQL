@@ -35,7 +35,7 @@ namespace ElementaryFramework\LightQL\Entities;
 /**
  * Column
  *
- * Describe a database column.
+ * Describe a database table's column.
  *
  * @category Entities
  * @package  LightQL
@@ -44,28 +44,98 @@ namespace ElementaryFramework\LightQL\Entities;
  */
 class Column
 {
+    /**
+     * The column name.
+     *
+     * @var string
+     */
     private $_name;
 
+    /**
+     * The column type.
+     *
+     * @var string
+     */
     private $_type;
 
+    /**
+     * The column size (if any).
+     *
+     * @var int[]
+     */
     private $_size;
 
+    /**
+     * The column's default value.
+     *
+     * @var mixed
+     */
     private $_default = null;
 
+    /**
+     * Defines if the column has the
+     * AUTO_INCREMENT property.
+     *
+     * @var bool
+     */
     public $isAutoIncrement;
 
+    /**
+     * Defines if the column is a
+     * primary key.
+     *
+     * @var bool
+     */
     public $isPrimaryKey;
 
+    /**
+     * Defines if the column has the
+     * UNIQUE property.
+     *
+     * @var bool
+     */
     public $isUniqueKey;
 
+    /**
+     * Defines if the column is in
+     * a one-to-many relation with another.
+     *
+     * @var bool
+     */
     public $isOneToMany;
 
+    /**
+     * Defines if the column is in
+     * a many-to-one relation with another.
+     *
+     * @var bool
+     */
     public $isManyToOne;
 
+    /**
+     * Defines if the column is in
+     * a many-to-many relation with another.
+     *
+     * @var bool
+     */
     public $isManyToMany;
 
+    /**
+     * Defines if the column is in
+     * a one-to-one relation with another.
+     *
+     * @var bool
+     */
     public $isOneToOne;
 
+    /**
+     * Create a new instance of the table column descriptor.
+     *
+     * @param string $name    The column's name.
+     * @param string $type    The column's type.
+     * @param int[]  $size    The array of sizes containing (min, max) values only.
+     * @param mixed  $default The default value of the column.
+     */
     public function __construct(string $name, string $type, array $size, $default = null)
     {
         $this->_name = $name;
@@ -75,6 +145,8 @@ class Column
     }
 
     /**
+     * Returns the column's name.
+     *
      * @return string
      */
     public function getName(): string
@@ -83,6 +155,8 @@ class Column
     }
 
     /**
+     * Returns the column's type.
+     *
      * @return string
      */
     public function getType(): string
@@ -91,6 +165,8 @@ class Column
     }
 
     /**
+     * Returns the column's size.
+     *
      * @return array
      */
     public function getSize(): array
@@ -99,7 +175,9 @@ class Column
     }
 
     /**
-     * @return null
+     * Returns the column's default value.
+     *
+     * @return mixed
      */
     public function getDefault()
     {

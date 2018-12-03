@@ -102,7 +102,7 @@ abstract class Entity implements IEntity
         $pkFound = false;
 
         foreach ($properties as $property) {
-            if ($this->_hasAnnotation($property->name, "@column")) {
+            if ($this->_propertyHasAnnotation($property->name, "@column")) {
                 $name = $this->_getMetadata($property->name, "@column", 'name');
                 $type = $this->_getMetadata($property->name, "@column", 'type');
                 $size = array(
@@ -112,13 +112,13 @@ abstract class Entity implements IEntity
 
                 $column = new Column($name, $type, $size);
 
-                $column->isPrimaryKey = $this->_hasAnnotation($property->name, '@id');
-                $column->isUniqueKey = $column->isPrimaryKey || $this->_hasAnnotation($property->name, '@unique');
-                $column->isAutoIncrement = $this->_hasAnnotation($property->name, '@autoIncrement');
-                $column->isManyToMany = $this->_hasAnnotation($property->name, '@manyToMany');
-                $column->isManyToOne = $this->_hasAnnotation($property->name, '@manyToOne');
-                $column->isOneToMany = $this->_hasAnnotation($property->name, '@oneToMany');
-                $column->isOneToOne = $this->_hasAnnotation($property->name, '@oneToOne');
+                $column->isPrimaryKey = $this->_propertyHasAnnotation($property->name, '@id');
+                $column->isUniqueKey = $column->isPrimaryKey || $this->_propertyHasAnnotation($property->name, '@unique');
+                $column->isAutoIncrement = $this->_propertyHasAnnotation($property->name, '@autoIncrement');
+                $column->isManyToMany = $this->_propertyHasAnnotation($property->name, '@manyToMany');
+                $column->isManyToOne = $this->_propertyHasAnnotation($property->name, '@manyToOne');
+                $column->isOneToMany = $this->_propertyHasAnnotation($property->name, '@oneToMany');
+                $column->isOneToOne = $this->_propertyHasAnnotation($property->name, '@oneToOne');
 
                 $this->_columns[$property->name] = $column;
 
@@ -144,10 +144,15 @@ abstract class Entity implements IEntity
 
         // Populate @column properties
         foreach ($this->_columns as $property => $column) {
-            if (array_key_exists($column->getName(), $this->raw)) {
-                $this->{$property} = $this->raw[$column->getName()];
-            } elseif (\is_null($this->{$property}) || $this->{$property} === null) {
-                $this->{$property} = $column->getDefault();
+            if (!$column->isManyToMany && !$column->isManyToOne
+                && !$column->isOneToMany && !$column->isOneToOne) {
+                if (array_key_exists($column->getName(), $this->raw)) {
+                    $this->{$property} = $this->raw[$column->getName()];
+                } elseif (\is_null($this->{$property}) || $this->{$property} === null) {
+                    $this->{$property} = $column->getDefault();
+                }
+            } else {
+                $this->{$property} = null;
             }
         }
     }
@@ -193,25 +198,36 @@ abstract class Entity implements IEntity
     }
 
     /**
-     * @param $property
-     * @param $annotation
+     * Checks if a property has the given annotation.
+     *
+     * @param string $property   The name of the property.
+     * @param string $annotation The name of the annotation.
+     *
      * @return bool
+     *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      */
-    private function _hasAnnotation($property, $annotation): bool
+    private function _propertyHasAnnotation(string $property, string $annotation): bool
     {
         return Annotations::propertyHasAnnotation($this, $property, $annotation);
     }
 
     /**
-     * @param $property
-     * @param $type
-     * @param $name
-     * @param null $default
-     * @return IAnnotation
+     * Returns the annotation, or the value of an annotation property
+     * of a property.
+     *
+     * @param string $property The name of the property.
+     * @param string $type     The name of the annotation.
+     * @param string $name     The name of the annotation property to retrieve.
+     *                         Set it to null to retrieve the entire annotation object.
+     * @param mixed  $default  The default value to return if the property has no
+     *                         annotation of the given type.
+     *
+     * @return IAnnotation|mixed
+     *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      */
-    private function _getMetadata($property, $type, $name = null, $default = null)
+    private function _getMetadata(string $property, string $type, ?string $name = null, $default = null)
     {
         $a = Annotations::ofProperty($this, $property, $type);
 
@@ -227,7 +243,10 @@ abstract class Entity implements IEntity
     }
 
     /**
-     * @param string $column
+     * Checks if the given column name exists in this entity.
+     *
+     * @param string $column The column name to search.
+     *
      * @return bool
      */
     private function _exists(string $column): bool

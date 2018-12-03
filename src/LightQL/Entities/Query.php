@@ -47,26 +47,36 @@ use ElementaryFramework\LightQL\Exceptions\QueryException;
 class Query
 {
     /**
+     * The entity manager running this query.
+     *
      * @var EntityManager
      */
     private $_entityManager;
 
     /**
+     * The reflection class of the managed entity.
+     *
      * @var \ReflectionClass
      */
     private $_entityReflection;
 
     /**
+     * The named query string.
+     *
      * @var string
      */
     private $_namedQuery;
 
     /**
+     * Query parameters.
+     *
      * @var array
      */
     private $_parameters = array();
 
     /**
+     * The query executed by this instance.
+     *
      * @var \PDOStatement
      */
     private $_query = null;
@@ -81,21 +91,42 @@ class Query
         $this->_entityManager = $manager;
     }
 
+    /**
+     * Sets the reflection class of the managed entity.
+     *
+     * @param \ReflectionClass $entity The managed entity reflection class instance.
+     */
     public function setEntity(\ReflectionClass $entity)
     {
         $this->_entityReflection = $entity;
     }
 
+    /**
+     * Sets the named query to execute.
+     *
+     * @param string $query The named query.
+     */
     public function setQuery(string $query)
     {
         $this->_namedQuery = $query;
     }
 
+    /**
+     * Defines the value of one of query parameters.
+     *
+     * @param string $name  The name of the parameter in the query.
+     * @param mixed  $value The value of this parameter.
+     */
     public function setParam(string $name, $value)
     {
         $this->_parameters[$name] = $value;
     }
 
+    /**
+     * Executes the query.
+     *
+     * @return bool
+     */
     public function run(): bool
     {
         try {
@@ -111,6 +142,11 @@ class Query
         }
     }
 
+    /**
+     * Returns the set of results after the execution of the query.
+     *
+     * @return Entity[]
+     */
     public function getResults(): array
     {
         if ($this->_query === null) {
@@ -124,6 +160,12 @@ class Query
         return $results;
     }
 
+    /**
+     * Returns the first result of the set after the execution
+     * of the query.
+     *
+     * @return IEntity|null
+     */
     public function getFirstResult(): ?IEntity
     {
         $results = $this->getResults();

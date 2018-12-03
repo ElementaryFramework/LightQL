@@ -337,8 +337,11 @@ abstract class Facade implements IFacade
     }
 
     /**
-     * @param IEntity $entity
-     * @param string $property
+     * Fetch data for a many-to-many relation.
+     *
+     * @param IEntity $entity   The managed entity.
+     * @param string  $property The property in many-to-many relation.
+     *
      * @throws EntityException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
@@ -370,8 +373,11 @@ abstract class Facade implements IFacade
     }
 
     /**
-     * @param IEntity $entity
-     * @param string $property
+     * Fetch data for a one-to-many relation.
+     *
+     * @param IEntity $entity   The managed entity.
+     * @param string  $property The property in one-to-many relation.
+     *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
@@ -399,8 +405,11 @@ abstract class Facade implements IFacade
     }
 
     /**
-     * @param IEntity $entity
-     * @param string $property
+     * Fetch data for a many-to-one relation.
+     *
+     * @param IEntity $entity   The managed entity.
+     * @param string  $property The property in many-to-one relation.
+     *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
@@ -427,8 +436,11 @@ abstract class Facade implements IFacade
     }
 
     /**
-     * @param IEntity $entity
-     * @param string $property
+     * Fetch data for a one-to-one relation.
+     *
+     * @param IEntity $entity   The managed entity.
+     * @param string  $property The property in one-to-one relation.
+     *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
@@ -458,9 +470,13 @@ abstract class Facade implements IFacade
     }
 
     /**
-     * @param $rawEntities
-     * @param $annotations
-     * @return array
+     * Parse a set of raw data to a set of Entities.
+     *
+     * @param array $rawEntities The set of raw entities data provided fromm database.
+     * @param array $annotations The set of entity annotaions.
+     *
+     * @return Entity[]
+     *
      * @throws EntityException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException

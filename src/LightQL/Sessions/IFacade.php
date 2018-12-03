@@ -47,43 +47,55 @@ use ElementaryFramework\LightQL\Entities\Entity;
 interface IFacade
 {
     /**
-     * @param Entity $entity
-     * @return void
+     * Creates an entity.
+     *
+     * @param Entity $entity The entity to create.
      */
     function create(Entity &$entity);
 
     /**
-     * @param Entity $entity
-     * @return void
+     * Edit an entity.
+     *
+     * @param Entity $entity The entity to edit.
      */
     function edit(Entity &$entity);
 
     /**
-     * @param Entity $entity
-     * @return void
+     * Delete an entity.
+     *
+     * @param Entity $entity The entity to delete.
      */
     function delete(Entity &$entity);
 
     /**
-     * @param mixed $id
+     * Find an entity.
+     *
+     * @param mixed $id The id of the entity to find
      *
      * @return Entity
      */
     function find($id): Entity;
 
     /**
+     * Find all entities.
+     *
      * @return Entity[]
      */
     function findAll(): array;
 
     /**
-     * @param int $start
-     * @param int $length
-     * @return array
+     * Find all entities in the given range.
+     *
+     * @param int $start  The starting offset.
+     * @param int $length The number of entities to find.
+     *
+     * @return Entity[]
      */
     function findRange(int $start, int $length): array;
 
     /**
+     * Count the number of entities.
+     *
      * @return int
      */
     function count(): int;

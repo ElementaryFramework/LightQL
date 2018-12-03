@@ -46,7 +46,7 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
  * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/PersistenceUnit
+ * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/EntityManager
  */
 final class EntityManager
 {
@@ -94,15 +94,15 @@ final class EntityManager
      * Finds an entity from the database.
      *
      * @param string $entityClass The class name of the entity to find.
-     * @param mixed $id The value of the primary key.
+     * @param mixed $id           The value of the primary key.
      *
-     * @return Entity
+     * @return array Raw data from database.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      * @throws \ReflectionException
      */
-    public function find(string $entityClass, $id): Entity
+    public function find(string $entityClass, $id): array
     {
         $entityAnnotation = Annotations::ofClass($entityClass, "@entity");
 

@@ -47,31 +47,43 @@ use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
 class PersistenceUnit
 {
     /**
+     * The DBMS.
+     *
      * @var string
      */
     private $_dbms;
 
     /**
+     * The database server address.
+     *
      * @var string
      */
     private $_hostname;
 
     /**
+     * The database name.
+     *
      * @var string
      */
     private $_database;
 
     /**
+     * The username to use on connection.
+     *
      * @var string
      */
     private $_username;
 
     /**
+     * The password associated to the username.
+     *
      * @var string
      */
     private $_password;
 
     /**
+     * The list of registered persistence unit files.
+     *
      * @var array
      */
     private static $_registry = array();
@@ -175,6 +187,8 @@ class PersistenceUnit
     }
 
     /**
+     * Returns the DBMS.
+     *
      * @return string
      */
     public function getDbms()
@@ -183,6 +197,8 @@ class PersistenceUnit
     }
 
     /**
+     * Returns the database name.
+     *
      * @return string
      */
     public function getDatabase(): string
@@ -191,6 +207,8 @@ class PersistenceUnit
     }
 
     /**
+     * Returns the database server name.
+     *
      * @return string
      */
     public function getHostname(): string
@@ -199,6 +217,8 @@ class PersistenceUnit
     }
 
     /**
+     * Returns the password of the user.
+     *
      * @return string
      */
     public function getPassword(): string
@@ -207,6 +227,8 @@ class PersistenceUnit
     }
 
     /**
+     * Returns the username.
+     *
      * @return string
      */
     public function getUsername(): string
