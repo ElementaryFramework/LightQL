@@ -385,13 +385,15 @@ abstract class Facade implements IFacade
     {
         $oneToMany = Annotations::ofProperty($entity, $property, "@oneToMany");
         $referencedEntityAnnotations = Annotations::ofClass($oneToMany[0]->entity, "@entity");
-        $mappedPropertyAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToOne");
+        $mappedPropertyName = $this->_getCollectionPropertyName($this->getEntityClassName());
+        $mappedPropertyManyToOneAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $mappedPropertyName, "@manyToOne");
+        $mappedPropertyColumnAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $mappedPropertyName, "@column");
 
         $lightql = $this->entityManager->getLightQL();
 
         $result = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$mappedPropertyAnnotation[0]->column}" => $lightql->quote($entity->get($mappedPropertyAnnotation[0]->referencedColumn))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$mappedPropertyColumnAnnotation[0]->name}" => $lightql->quote($entity->get($mappedPropertyManyToOneAnnotation[0]->referencedColumn))))
             ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
 
         $propertyName = $this->_getReferencePropertyName($oneToMany[0]->entity);
@@ -416,13 +418,14 @@ abstract class Facade implements IFacade
     private function _fetchManyToOne(&$entity, $property)
     {
         $manyToOne = Annotations::ofProperty($entity, $property, "@manyToOne");
+        $column = Annotations::ofProperty($entity, $property, "@column");
         $referencedEntityAnnotations = Annotations::ofClass($manyToOne[0]->entity, "@entity");
 
         $lightql = $this->entityManager->getLightQL();
 
         $results = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->quote($entity->get($manyToOne[0]->column))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
             ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
         $collectionPropertyName = $this->_getCollectionPropertyName($manyToOne[0]->entity);
@@ -430,7 +433,7 @@ abstract class Facade implements IFacade
             $referencePropertyName = $this->_getReferencePropertyName($this->getEntityClassName());
             $className = $manyToOne[0]->entity;
             $e = new $className($item);
-            $e->$referencePropertyName = $entity;
+            $e->$referencePropertyName = &$entity;
             return $e;
         }, $results);
     }
@@ -465,7 +468,7 @@ abstract class Facade implements IFacade
         if ($result !== null) {
             $entity->$propertyName = new $className($result);
             $referencedPropertyName = $this->_getReferencePropertyName($this->getEntityClassName());
-            $entity->{$propertyName}->{$referencedPropertyName} = $entity;
+            $entity->{$propertyName}->{$referencedPropertyName} = &$entity;
         }
     }
 
@@ -473,7 +476,7 @@ abstract class Facade implements IFacade
      * Parse a set of raw data to a set of Entities.
      *
      * @param array $rawEntities The set of raw entities data provided fromm database.
-     * @param array $annotations The set of entity annotaions.
+     * @param array $annotations The set of entity annotations.
      *
      * @return Entity[]
      *

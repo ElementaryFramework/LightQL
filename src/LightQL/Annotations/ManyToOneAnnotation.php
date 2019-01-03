@@ -59,13 +59,6 @@ class ManyToOneAnnotation extends Annotation
     public $entity;
 
     /**
-     * The name of the column.
-     *
-     * @var string
-     */
-    public $column;
-
-    /**
      * The name of the referenced column.
      *
      * @var string

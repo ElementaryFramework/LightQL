@@ -57,11 +57,4 @@ class OneToManyAnnotation extends Annotation
      * @var string
      */
     public $entity;
-
-    /**
-     * The entity column in one-to-many relation.
-     *
-     * @var string
-     */
-    public $column;
 }
