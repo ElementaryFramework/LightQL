@@ -349,6 +349,7 @@ abstract class Facade implements IFacade
     private function _fetchManyToMany(&$entity, $property)
     {
         $manyToMany = Annotations::ofProperty($entity, $property, "@manyToMany");
+        $column = Annotations::ofProperty($entity, $property, "@column");
         $entityAnnotations = Annotations::ofClass($entity, "@entity");
 
         $mappedPropertyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToMany");
@@ -362,7 +363,7 @@ abstract class Facade implements IFacade
 
         $results = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($manyToMany[0]->column))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
             ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
         $propertyName = $this->_getCollectionPropertyName($manyToMany[0]->entity);
