@@ -175,9 +175,9 @@ abstract class Entity implements IEntity
         }
 
         // Try to get the property value
-        /** @var Column $column */
-        foreach ($this->_columns as $property => $column) {
-            if ($column->getName() === $column && isset($this->{$property})) {
+        /** @var Column $c */
+        foreach ($this->_columns as $property => $c) {
+            if ($c->getName() === $column && isset($this->{$property})) {
                 return $this->{$property};
             }
         }
