@@ -66,6 +66,13 @@ class IdGeneratorAnnotation extends Annotation implements IAnnotationFileAware
     public $generator;
 
     /**
+     * Annotation file.
+     *
+     * @var AnnotationFile
+     */
+    protected $file;
+
+    /**
      * Initialize the annotation.
      *
      * @param array $properties The array of annotation properties
