@@ -140,7 +140,10 @@ abstract class Entity implements IEntity
      */
     public function hydrate(array $data)
     {
-        $this->raw = $data;
+        // Merge values
+        foreach ($data as $name => $value) {
+            $this->raw[$name] = $value;
+        }
 
         // Populate @column properties
         foreach ($this->_columns as $property => $column) {
@@ -166,10 +169,20 @@ abstract class Entity implements IEntity
      */
     public function get(string $column)
     {
+        // Try to get the raw value
         if ($this->_exists($column)) {
             return $this->raw[$column];
         }
 
+        // Try to get the property value
+        /** @var Column $column */
+        foreach ($this->_columns as $property => $column) {
+            if ($column->getName() === $column && isset($this->{$property})) {
+                return $this->{$property};
+            }
+        }
+
+        // The value definitively doesn't exist
         return null;
     }
 
@@ -181,9 +194,7 @@ abstract class Entity implements IEntity
      */
     public function set(string $column, $value)
     {
-        if ($this->_exists($column)) {
-            $this->raw[$column] = $value;
-        }
+        $this->hydrate(array($column => $value));
     }
 
     /**
