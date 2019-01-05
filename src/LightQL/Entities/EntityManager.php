@@ -157,13 +157,54 @@ final class EntityManager
         $fieldAndValues = array();
 
         $autoIncrementProperty = null;
+        $idProperty = null;
 
+        /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
-
             if ($autoIncrementProperty === null && $column->isAutoIncrement) {
                 $autoIncrementProperty = $property;
             }
+
+            if ($idProperty === null && $column->isPrimaryKey) {
+                $idProperty = $property;
+            }
+        }
+
+        if ($idProperty !== null && ($autoIncrementProperty === null || $autoIncrementProperty !== $idProperty)) {
+            // We have a non auto incremented primary key...
+            // Check if the value is null or not set
+            if ($entity->{$idProperty} === null || !isset($entity->{$idProperty})) {
+                // We have a not defined non auto incremented primary key...
+                // Check if the entity class has an @idGenerator annotation
+                if (Annotations::classHasAnnotation($entity, "@idGenerator")) {
+                    $idGeneratorAnnotation = Annotations::ofClass($entity, "@idGenerator");
+
+                    if (\is_subclass_of($idGeneratorAnnotation[0]->generator, IEntityIdGenerator::class)) {
+                        // We are safe !
+                        // Generate an entity primary key using the generator
+                        $idGeneratorClass = new \ReflectionClass($idGeneratorAnnotation[0]->generator);
+                        /** @var IEntityIdGenerator $idGenerator */
+                        $idGenerator = $idGeneratorClass->newInstance();
+
+                        $entity->{$idProperty} = $idGenerator->generate($entity);
+                    } else {
+                        // Bad id generator implementation, throw an error
+                        throw new EntityException("The id generator of this entity doesn't implement the IEntityIdGenerator interface.");
+                    }
+
+                } else {
+                    // This will result to a SQL error, throw instead
+                    throw new EntityException(
+                        "Cannot persist an entity into the database. The entity primary key has no value, and has not the @autoIncrement annotation." .
+                        " If the table primary key column is auto incremented, consider add the @autoIncrement annotation to the primary key class property." .
+                        " If the table primary key column is not auto incremented, please give a value to the primary key class property before persist the entity, or use a @idGenerator annotation instead."
+                    );
+                }
+            }
+        }
+
+        foreach ($columns as $property => $column) {
+            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
         }
 
         $this->_lightql->beginTransaction();
