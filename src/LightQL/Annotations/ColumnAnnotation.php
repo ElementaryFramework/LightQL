@@ -68,4 +68,24 @@ class ColumnAnnotation extends Annotation
      * @var mixed
      */
     public $default = null;
+
+    /**
+     * Initialize the annotation.
+     *
+     * @param array $properties The array of annotation properties
+     *
+     * @throws AnnotationException
+     *
+     * @return void
+     */
+    public function initAnnotation(array $properties)
+    {
+        $this->map($properties, array('name', 'type', 'default'));
+
+        parent::initAnnotation($properties);
+
+        if (!isset($this->name)) {
+            throw new AnnotationException(self::class . " requires a \"name\" property");
+        }
+    }
 }
