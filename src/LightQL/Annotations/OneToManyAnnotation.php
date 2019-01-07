@@ -62,6 +62,13 @@ class OneToManyAnnotation extends Annotation implements IAnnotationFileAware
     public $entity;
 
     /**
+     * The referenced column name of the many-to-many relation.
+     *
+     * @var string
+     */
+    public $referencedColumn;
+
+    /**
      * Annotation file.
      *
      * @var AnnotationFile
@@ -79,12 +86,16 @@ class OneToManyAnnotation extends Annotation implements IAnnotationFileAware
      */
     public function initAnnotation(array $properties)
     {
-        $this->map($properties, array('entity'));
+        $this->map($properties, array('entity', 'referencedColumn'));
 
         parent::initAnnotation($properties);
 
         if (!isset($this->entity)) {
             throw new AnnotationException(self::class . " requires a \"entity\" property");
+        }
+
+        if (!isset($this->referencedColumn)) {
+            throw new AnnotationException(self::class . " requires a \"referencedColumn\" property");
         }
 
         $this->entity = $this->file->resolveType($this->entity);
