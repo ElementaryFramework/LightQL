@@ -33,6 +33,7 @@
 namespace ElementaryFramework\LightQL\Annotations;
 
 use ElementaryFramework\Annotations\Annotation;
+use ElementaryFramework\Annotations\Exceptions\AnnotationException;
 
 /**
  * Column Annotation
