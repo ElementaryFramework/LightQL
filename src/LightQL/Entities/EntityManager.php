@@ -323,10 +323,8 @@ final class EntityManager
         }
 
         foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->$property);
-
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] =  $this->_lightql->quote($entity->$property);
+                $where[$column->getName()] =  $this->_lightql->quote($entity->get($column->getName()));
                 $pk[] = $property;
             }
         }
