@@ -103,11 +103,11 @@ abstract class Entity implements IEntity
 
         foreach ($properties as $property) {
             if ($this->_propertyHasAnnotation($property->name, "@column")) {
-                $name = $this->_getMetadata($property->name, "@column", 'name');
-                $type = $this->_getMetadata($property->name, "@column", 'type');
+                $name = $this->_getMetadata($property->name, "@column", "name");
+                $type = $this->_getMetadata($property->name, "@column", "type", "");
                 $size = array(
-                    $this->_getMetadata($property->name, '@size', 'min'),
-                    $this->_getMetadata($property->name, '@size', 'max')
+                    $this->_getMetadata($property->name, '@size', "min"),
+                    $this->_getMetadata($property->name, '@size', "max")
                 );
 
                 $column = new Column($name, $type, $size);
@@ -266,7 +266,7 @@ abstract class Entity implements IEntity
             return $a[0];
         }
 
-        return $a[0]->$name;
+        return $a[0]->$name !== null ? $a[0]->$name : $default;
     }
 
     /**
