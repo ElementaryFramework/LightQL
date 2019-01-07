@@ -62,6 +62,13 @@ class ManyToManyAnnotation extends Annotation implements IAnnotationFileAware
     public $entity;
 
     /**
+     * The name of the table born from the many-to-many relation.
+     *
+     * @var string
+     */
+    public $crossTable;
+
+    /**
      * The referenced column name of the many-to-many relation.
      *
      * @var string
@@ -86,9 +93,13 @@ class ManyToManyAnnotation extends Annotation implements IAnnotationFileAware
      */
     public function initAnnotation(array $properties)
     {
-        $this->map($properties, array('entity', 'referencedColumn'));
+        $this->map($properties, array('entity', 'crossTable', 'referencedColumn'));
 
         parent::initAnnotation($properties);
+
+        if (!isset($this->crossTable)) {
+            throw new AnnotationException(self::class . " requires a \"crossTable\" property");
+        }
 
         if (!isset($this->referencedColumn)) {
             throw new AnnotationException(self::class . " requires a \"referencedColumn\" property");
