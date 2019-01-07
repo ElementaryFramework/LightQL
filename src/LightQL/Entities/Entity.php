@@ -178,7 +178,23 @@ abstract class Entity implements IEntity
         /** @var Column $c */
         foreach ($this->_columns as $property => $c) {
             if ($c->getName() === $column && isset($this->{$property})) {
-                return $this->{$property};
+                if ($this->{$property} instanceof Entity) {
+                    // Have to be a reference, not a collection
+                    if ($c->isManyToOne || $c->isManyToMany) {
+                        // Find the good property
+                        continue;
+                    } else if ($c->isOneToMany) {
+                        // Resolve the referenced column
+                        $referencedColumn = $this->_getMetadata($property, "@oneToMany", "referencedColumn");
+                        return $this->{$property}->get($referencedColumn);
+                    } else if ($c->isOneToOne) {
+                        // Resolve the referenced column
+                        $referencedColumn = $this->_getMetadata($property, "@oneToOne", "referencedColumn");
+                        return $this->{$property}->get($referencedColumn);
+                    }
+                } else {
+                    return $this->{$property};
+                }
             }
         }
 
