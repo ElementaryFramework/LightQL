@@ -33,6 +33,8 @@
 namespace ElementaryFramework\LightQL\Sessions;
 
 use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\Annotations\Exceptions\AnnotationException;
+
 use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
@@ -74,25 +76,26 @@ abstract class Facade implements IFacade
      *
      * @param string $class The entity class name managed by this facade.
      *
-     * @throws EntityException
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws EntityException When the entity class or object doesn't have an @entity annotation.
+     * @throws FacadeException When the "entityManager" property of this Facade doesn't have a @persistenceUnit annotation.
+     * @throws FacadeException When the entity class or object doesn't inherit from the Entity class.
+     * @throws AnnotationException When the Facade is unable to read an annotation.
      */
     public function __construct($class)
     {
         if (!Annotations::propertyHasAnnotation($this, "entityManager", "@persistenceUnit")) {
-            throw new FacadeException("Cannot create the entity facade. The property entityManager has no @persistenceUnit annotation.");
-        }
-
-        if (is_subclass_of($class, Entity::class)) {
-            $this->_class = new \ReflectionClass($class);
-        } else {
-            throw new FacadeException("Unable to create a facade. The entity class or object seems to be invalid.");
+            throw new FacadeException("Cannot create the entity facade. The property \"entityManager\" has no @persistenceUnit annotation.");
         }
 
         if (!Annotations::classHasAnnotation($class, "@entity")) {
             throw new EntityException("Cannot create an entity without the @entity annotation.");
         }
+
+        if (!is_subclass_of($class, Entity::class)) {
+            throw new FacadeException("Unable to create a facade. The entity class or object seems to be invalid.");
+        }
+
+        $this->_class = new \ReflectionClass($class);
 
         $annotations = Annotations::ofProperty($this, "entityManager", "@persistenceUnit");
         $this->entityManager = new EntityManager(PersistenceUnit::create($annotations[0]->name));
@@ -313,30 +316,6 @@ abstract class Facade implements IFacade
     }
 
     /**
-     * @param string $name The entity class name.
-     *
-     * @return string
-     */
-    private function _getCollectionPropertyName(string $name): string
-    {
-        $entityNameParts = explode("\\", $name);
-        $entityShortName = array_pop($entityNameParts);
-        return strtolower($entityShortName[0]) . substr($entityShortName, 1) . "Collection";
-    }
-
-    /**
-     * @param string $name The entity class name.
-     *
-     * @return string
-     */
-    private function _getReferencePropertyName(string $name): string
-    {
-        $entityNameParts = explode("\\", $name);
-        $entityShortName = array_pop($entityNameParts);
-        return strtolower($entityShortName[0]) . substr($entityShortName, 1) . "Reference";
-    }
-
-    /**
      * Fetch data for a many-to-many relation.
      *
      * @param IEntity $entity   The managed entity.
@@ -352,23 +331,46 @@ abstract class Facade implements IFacade
         $column = Annotations::ofProperty($entity, $property, "@column");
         $entityAnnotations = Annotations::ofClass($entity, "@entity");
 
-        $mappedPropertyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $this->_getCollectionPropertyName($this->getEntityClassName()), "@manyToMany");
-        $referencedEntityAnnotations = Annotations::ofClass($manyToMany[0]->entity, "@entity");
+        $mappedPropertyName = null;
 
-        if ($entityAnnotations[0]->table !== $referencedEntityAnnotations[0]->table) {
-            throw new EntityException("Inconsistent @manyToMany annotation. The referenced table is different on both sides.");
+        $referencedEntity = new $manyToMany[0]->entity;
+        foreach ($referencedEntity->getColumns() as $p => $c) {
+            if ($c->isManyToMany) {
+                $mappedManyToMany = Annotations::ofProperty($referencedEntity, $p, "@manyToMany");
+                if ($mappedManyToMany[0]->crossTable === $manyToMany[0]->crossTable) {
+                    $mappedPropertyName = $p;
+                    break;
+                }
+            }
         }
+        unset($referencedEntity);
+
+        if ($mappedPropertyName === null) {
+            throw new EntityException("Unable to find a suitable property with a @manyToMany annotation in the entity \"$manyToMany[0]->entity\".");
+        }
+
+        $mappedPropertyManyToManyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $mappedPropertyName, "@manyToMany");
+        $mappedPropertyColumnAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $mappedPropertyName, "@column");
+        $referencedEntityAnnotations = Annotations::ofClass($manyToMany[0]->entity, "@entity");
 
         $lightql = $this->entityManager->getLightQL();
 
         $results = $lightql
-            ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
-            ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
+            ->from($manyToMany[0]->crossTable)
+            ->where(array("{$manyToMany[0]->crossTable}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
+            ->joinArray(
+                "{$referencedEntityAnnotations[0]->table}.*",
+                array(
+                    array(
+                        "side" => "LEFT",
+                        "table" => $referencedEntityAnnotations[0]->table,
+                        "cond" => "{$manyToMany[0]->crossTable}.{$mappedPropertyAnnotation[0]->referencedColumn} = {$referencedEntityAnnotations[0]->table}.{$mappedPropertyColumnAnnotation[0]->name}"
+                    )
+                )
+            );
 
-        $propertyName = $this->_getCollectionPropertyName($manyToMany[0]->entity);
-        $entity->$propertyName = array_map(function($item) use ($manyToMany) {
-            $className = $manyToMany[0]->entity;
+        $className = $manyToMany[0]->entity;
+        $entity->{$property} = array_map(function($item) use ($manyToMany, $className) {
             return new $className($item);
         }, $results);
     }
@@ -385,25 +387,30 @@ abstract class Facade implements IFacade
     private function _fetchOneToMany(&$entity, $property)
     {
         $oneToMany = Annotations::ofProperty($entity, $property, "@oneToMany");
+        $column = Annotations::ofProperty($entity, $property, "@column");
         $referencedEntityAnnotations = Annotations::ofClass($oneToMany[0]->entity, "@entity");
-        $mappedPropertyName = $this->_getCollectionPropertyName($this->getEntityClassName());
+
+        $mappedPropertyName = $this->_resolveMappedPropertyName($oneToMany[0]->entity, "ManyToOne", $oneToMany[0]->referencedColumn);
+
+        if ($mappedPropertyName === null) {
+            throw new EntityException("Unable to find a suitable property with @manyToOne annotation in the entity \"{$oneToMany[0]->entity}\".");
+        }
+
         $mappedPropertyManyToOneAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $mappedPropertyName, "@manyToOne");
-        $mappedPropertyColumnAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $mappedPropertyName, "@column");
 
         $lightql = $this->entityManager->getLightQL();
 
         $result = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$mappedPropertyColumnAnnotation[0]->name}" => $lightql->quote($entity->get($mappedPropertyManyToOneAnnotation[0]->referencedColumn))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
             ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
 
-        $propertyName = $this->_getReferencePropertyName($oneToMany[0]->entity);
         $className = $oneToMany[0]->entity;
 
-        $entity->$propertyName = $result;
+        $entity->{$property} = $result;
 
         if ($result !== null) {
-            $entity->$propertyName = new $className($result);
+            $entity->{$property} = new $className($result);
         }
     }
 
@@ -422,6 +429,12 @@ abstract class Facade implements IFacade
         $column = Annotations::ofProperty($entity, $property, "@column");
         $referencedEntityAnnotations = Annotations::ofClass($manyToOne[0]->entity, "@entity");
 
+        $mappedPropertyName = $this->_resolveMappedPropertyName($manyToOne[0]->entity, "OneToMany", $manyToOne[0]->referencedColumn);
+
+        if ($mappedPropertyName === null) {
+            throw new EntityException("Unable to find a suitable property with @oneToMany annotation in the entity \"{$manyToOne[0]->entity}\".");
+        }
+
         $lightql = $this->entityManager->getLightQL();
 
         $results = $lightql
@@ -429,12 +442,10 @@ abstract class Facade implements IFacade
             ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
             ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
-        $collectionPropertyName = $this->_getCollectionPropertyName($manyToOne[0]->entity);
-        $entity->$collectionPropertyName = array_map(function($item) use ($manyToOne, $entity) {
-            $referencePropertyName = $this->_getReferencePropertyName($this->getEntityClassName());
+        $entity->{$property} = array_map(function($item) use ($manyToOne, $entity, $mappedPropertyName) {
             $className = $manyToOne[0]->entity;
             $e = new $className($item);
-            $e->$referencePropertyName = &$entity;
+            $e->{$mappedPropertyName} = &$entity;
             return $e;
         }, $results);
     }
@@ -451,26 +462,57 @@ abstract class Facade implements IFacade
     private function _fetchOneToOne(&$entity, $property)
     {
         $oneToOne = Annotations::ofProperty($entity, $property, "@oneToOne");
+        $column = Annotations::ofProperty($entity, $property, "@column");
         $referencedEntityAnnotations = Annotations::ofClass($oneToOne[0]->entity, "@entity");
-        $mappedPropertyAnnotation = Annotations::ofProperty($oneToOne[0]->entity, $this->_getReferencePropertyName($this->getEntityClassName()), "@oneToOne");
+
+        $mappedPropertyName = $this->_resolveMappedPropertyName($oneToOne[0]->entity, "OneToOne", $oneToOne[0]->referencedColumn);
+
+        if ($mappedPropertyName === null) {
+            throw new EntityException("Unable to find a suitable property with @oneToOne annotation in the entity \"{$oneToOne[0]->entity}\".");
+        }
+
+        $mappedPropertyAnnotation = Annotations::ofProperty($oneToOne[0]->entity, $mappedPropertyName, "@oneToOne");
 
         $lightql = $this->entityManager->getLightQL();
 
         $result = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToOne[0]->referencedColumn}" => $lightql->quote($entity->get($mappedPropertyAnnotation[0]->referencedColumn))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
             ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
 
-        $propertyName = $this->_getReferencePropertyName($oneToOne[0]->entity);
         $className = $oneToOne[0]->entity;
 
-        $entity->$propertyName = $result;
+        $entity->{$property} = $result;
 
         if ($result !== null) {
-            $entity->$propertyName = new $className($result);
-            $referencedPropertyName = $this->_getReferencePropertyName($this->getEntityClassName());
-            $entity->{$propertyName}->{$referencedPropertyName} = &$entity;
+            $entity->{$property} = new $className($result);
+            $entity->{$property}->{$mappedPropertyName} = &$entity;
         }
+    }
+
+    /**
+     * Resolve the name of a property mapped by an annotation.
+     *
+     * @param string $entityClass The class name of the mapped property.
+     * @param string $check       The type of annotation to find.
+     * @param string $column      The mapped column name.
+     *
+     * @return string|null
+     */
+    private function _resolveMappedPropertyName(string $entityClass, string $check, string $column): bool
+    {
+        $mappedPropertyName = null;
+
+        $referencedEntity = new $entityClass;
+        foreach ($referencedEntity->getColumns() as $p => $c) {
+            if ($c->{"is{$check}"} && $c->getName() === $manyToOne[0]->referencedColumn) {
+                $mappedPropertyName = $p;
+                break;
+            }
+        }
+        unset($referencedEntity);
+
+        return $mappedPropertyName;
     }
 
     /**
