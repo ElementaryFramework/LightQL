@@ -505,7 +505,7 @@ abstract class Facade implements IFacade
 
         $referencedEntity = new $entityClass;
         foreach ($referencedEntity->getColumns() as $p => $c) {
-            if ($c->{"is{$check}"} && $c->getName() === $manyToOne[0]->referencedColumn) {
+            if ($c->{"is{$check}"} && $c->getName() === $column) {
                 $mappedPropertyName = $p;
                 break;
             }
