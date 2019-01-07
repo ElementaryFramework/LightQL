@@ -33,36 +33,44 @@
 namespace ElementaryFramework\LightQL\Annotations;
 
 use ElementaryFramework\Annotations\Annotation;
+use ElementaryFramework\Annotations\AnnotationFile;
+use ElementaryFramework\Annotations\IAnnotationFileAware;
 use ElementaryFramework\Annotations\Exceptions\AnnotationException;
-use ElementaryFramework\LightQL\Entities\Entity;
 
 /**
- * Entity Annotation
+ * Id Generator Annotation
  *
- * Used to define a class as an entity.
+ * Used to define the primary key generator of an entity.
+ *
+ * This annotation have to be associated with the @entity
+ * annotation to take effect.
+ *
+ * The entity class with this annotation must have a
+ * property with the @id annotation.
  *
  * @usage('class' => true, 'inherited' => true)
  *
  * @category Annotations
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/EntityAnnotation
+ * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/IdAnnotation
  */
-class EntityAnnotation extends Annotation
+class IdGeneratorAnnotation extends Annotation implements IAnnotationFileAware
 {
     /**
-     * The table name represented by the entity.
+     * Specify the class name to use as the ID generator
+     * of the current entity.
      *
      * @var string
      */
-    public $table;
+    public $generator;
 
     /**
-     * The fetch mode used by the entity.
+     * Annotation file.
      *
-     * @var integer
+     * @var AnnotationFile
      */
-    public $fetchMode = Entity::FETCH_LAZY;
+    protected $file;
 
     /**
      * Initialize the annotation.
@@ -75,20 +83,26 @@ class EntityAnnotation extends Annotation
      */
     public function initAnnotation(array $properties)
     {
-        $this->map($properties, array('table', 'fetchMode'));
+        $this->map($properties, array("generator"));
 
         parent::initAnnotation($properties);
 
-        if ($this->fetchMode === "LAZY") {
-            $this->fetchMode = Entity::FETCH_LAZY;
+        if (!isset($this->generator)) {
+            throw new AnnotationException(self::class . " must have a \"generator\" property");
         }
 
-        if ($this->fetchMode === "EAGER") {
-            $this->fetchMode = Entity::FETCH_EAGER;
-        }
+        $this->generator = $this->file->resolveType($this->generator);
+    }
 
-        if (!isset($this->table)) {
-            throw new AnnotationException(self::class . " requires a \"table\" property");
-        }
+    /**
+     * Provides information about file, that contains this annotation.
+     *
+     * @param AnnotationFile $file Annotation file.
+     *
+     * @return void
+     */
+    public function setAnnotationFile(AnnotationFile $file)
+    {
+        $this->file = $file;
     }
 }

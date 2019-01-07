@@ -103,11 +103,11 @@ abstract class Entity implements IEntity
 
         foreach ($properties as $property) {
             if ($this->_propertyHasAnnotation($property->name, "@column")) {
-                $name = $this->_getMetadata($property->name, "@column", 'name');
-                $type = $this->_getMetadata($property->name, "@column", 'type');
+                $name = $this->_getMetadata($property->name, "@column", "name");
+                $type = $this->_getMetadata($property->name, "@column", "type", "");
                 $size = array(
-                    $this->_getMetadata($property->name, '@size', 'min'),
-                    $this->_getMetadata($property->name, '@size', 'max')
+                    $this->_getMetadata($property->name, '@size', "min"),
+                    $this->_getMetadata($property->name, '@size', "max")
                 );
 
                 $column = new Column($name, $type, $size);
@@ -140,7 +140,10 @@ abstract class Entity implements IEntity
      */
     public function hydrate(array $data)
     {
-        $this->raw = $data;
+        // Merge values
+        foreach ($data as $name => $value) {
+            $this->raw[$name] = $value;
+        }
 
         // Populate @column properties
         foreach ($this->_columns as $property => $column) {
@@ -166,10 +169,36 @@ abstract class Entity implements IEntity
      */
     public function get(string $column)
     {
+        // Try to get the raw value
         if ($this->_exists($column)) {
             return $this->raw[$column];
         }
 
+        // Try to get the property value
+        /** @var Column $c */
+        foreach ($this->_columns as $property => $c) {
+            if ($c->getName() === $column && isset($this->{$property})) {
+                if ($this->{$property} instanceof Entity) {
+                    // Have to be a reference, not a collection
+                    if ($c->isManyToOne || $c->isManyToMany) {
+                        // Find the good property
+                        continue;
+                    } else if ($c->isOneToMany) {
+                        // Resolve the referenced column
+                        $referencedColumn = $this->_getMetadata($property, "@oneToMany", "referencedColumn");
+                        return $this->{$property}->get($referencedColumn);
+                    } else if ($c->isOneToOne) {
+                        // Resolve the referenced column
+                        $referencedColumn = $this->_getMetadata($property, "@oneToOne", "referencedColumn");
+                        return $this->{$property}->get($referencedColumn);
+                    }
+                } else {
+                    return $this->{$property};
+                }
+            }
+        }
+
+        // The value definitively doesn't exist
         return null;
     }
 
@@ -181,9 +210,7 @@ abstract class Entity implements IEntity
      */
     public function set(string $column, $value)
     {
-        if ($this->_exists($column)) {
-            $this->raw[$column] = $value;
-        }
+        $this->hydrate(array($column => $value));
     }
 
     /**
@@ -239,7 +266,7 @@ abstract class Entity implements IEntity
             return $a[0];
         }
 
-        return $a[0]->$name;
+        return $a[0]->$name !== null ? $a[0]->$name : $default;
     }
 
     /**

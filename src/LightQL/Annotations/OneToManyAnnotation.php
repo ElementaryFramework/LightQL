@@ -33,6 +33,9 @@
 namespace ElementaryFramework\LightQL\Annotations;
 
 use ElementaryFramework\Annotations\Annotation;
+use ElementaryFramework\Annotations\AnnotationFile;
+use ElementaryFramework\Annotations\IAnnotationFileAware;
+use ElementaryFramework\Annotations\Exceptions\AnnotationException;
 
 /**
  * One-To-Many Annotation
@@ -49,7 +52,7 @@ use ElementaryFramework\Annotations\Annotation;
  * @author   Nana Axel <ax.lnana@outlook.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/OneToManyAnnotation
  */
-class OneToManyAnnotation extends Annotation
+class OneToManyAnnotation extends Annotation implements IAnnotationFileAware
 {
     /**
      * The referenced entity in this one-to-many relation.
@@ -57,4 +60,56 @@ class OneToManyAnnotation extends Annotation
      * @var string
      */
     public $entity;
+
+    /**
+     * The referenced column name of the many-to-many relation.
+     *
+     * @var string
+     */
+    public $referencedColumn;
+
+    /**
+     * Annotation file.
+     *
+     * @var AnnotationFile
+     */
+    protected $file;
+
+    /**
+     * Initialize the annotation.
+     *
+     * @param array $properties The array of annotation properties
+     *
+     * @throws AnnotationException
+     *
+     * @return void
+     */
+    public function initAnnotation(array $properties)
+    {
+        $this->map($properties, array('entity', 'referencedColumn'));
+
+        parent::initAnnotation($properties);
+
+        if (!isset($this->entity)) {
+            throw new AnnotationException(self::class . " requires a \"entity\" property");
+        }
+
+        if (!isset($this->referencedColumn)) {
+            throw new AnnotationException(self::class . " requires a \"referencedColumn\" property");
+        }
+
+        $this->entity = $this->file->resolveType($this->entity);
+    }
+
+    /**
+     * Provides information about file, that contains this annotation.
+     *
+     * @param AnnotationFile $file Annotation file.
+     *
+     * @return void
+     */
+    public function setAnnotationFile(AnnotationFile $file)
+    {
+        $this->file = $file;
+    }
 }

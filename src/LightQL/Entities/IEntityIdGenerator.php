@@ -30,65 +30,26 @@
  * @link      http://lightql.na2axl.tk
  */
 
-namespace ElementaryFramework\LightQL\Annotations;
-
-use ElementaryFramework\Annotations\Annotation;
-use ElementaryFramework\Annotations\Exceptions\AnnotationException;
-use ElementaryFramework\LightQL\Entities\Entity;
+namespace ElementaryFramework\LightQL\Entities;
 
 /**
- * Entity Annotation
+ * IEntityIdGenerator
  *
- * Used to define a class as an entity.
+ * Defines a class as a primary key generator of a column.
  *
- * @usage('class' => true, 'inherited' => true)
- *
- * @category Annotations
+ * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Annotations/EntityAnnotation
+ * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/IEntityIdGenerator
  */
-class EntityAnnotation extends Annotation
+interface IEntityIdGenerator
 {
     /**
-     * The table name represented by the entity.
+     * Generates a new, unique primary key value for the given entity.
      *
-     * @var string
+     * @param Entity $entity The entity which we have to generate a key.
+     *
+     * @return null|int|string|IPrimaryKey
      */
-    public $table;
-
-    /**
-     * The fetch mode used by the entity.
-     *
-     * @var integer
-     */
-    public $fetchMode = Entity::FETCH_LAZY;
-
-    /**
-     * Initialize the annotation.
-     *
-     * @param array $properties The array of annotation properties
-     *
-     * @throws AnnotationException
-     *
-     * @return void
-     */
-    public function initAnnotation(array $properties)
-    {
-        $this->map($properties, array('table', 'fetchMode'));
-
-        parent::initAnnotation($properties);
-
-        if ($this->fetchMode === "LAZY") {
-            $this->fetchMode = Entity::FETCH_LAZY;
-        }
-
-        if ($this->fetchMode === "EAGER") {
-            $this->fetchMode = Entity::FETCH_EAGER;
-        }
-
-        if (!isset($this->table)) {
-            throw new AnnotationException(self::class . " requires a \"table\" property");
-        }
-    }
+    function generate(Entity $entity);
 }

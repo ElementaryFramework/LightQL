@@ -37,6 +37,7 @@ use ElementaryFramework\LightQL\Annotations\AutoIncrementAnnotation;
 use ElementaryFramework\LightQL\Annotations\ColumnAnnotation;
 use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
 use ElementaryFramework\LightQL\Annotations\IdAnnotation;
+use ElementaryFramework\LightQL\Annotations\IdGeneratorAnnotation;
 use ElementaryFramework\LightQL\Annotations\ManyToManyAnnotation;
 use ElementaryFramework\LightQL\Annotations\ManyToOneAnnotation;
 use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
@@ -72,19 +73,20 @@ class LightQL
     {
         $manager = Annotations::getManager();
 
-        $manager->registerAnnotation("entity", EntityAnnotation::class);
-        $manager->registerAnnotation("column", ColumnAnnotation::class);
-        $manager->registerAnnotation("id", IdAnnotation::class);
-        $manager->registerAnnotation("unique", UniqueAnnotation::class);
         $manager->registerAnnotation("autoIncrement", AutoIncrementAnnotation::class);
-        $manager->registerAnnotation("notNull", NotNullAnnotation::class);
-        $manager->registerAnnotation("size", SizeAnnotation::class);
+        $manager->registerAnnotation("column", ColumnAnnotation::class);
+        $manager->registerAnnotation("entity", EntityAnnotation::class);
+        $manager->registerAnnotation("id", IdAnnotation::class);
+        $manager->registerAnnotation("idGenerator", IdGeneratorAnnotation::class);
         $manager->registerAnnotation("manyToMany", ManyToManyAnnotation::class);
         $manager->registerAnnotation("manyToOne", ManyToOneAnnotation::class);
+        $manager->registerAnnotation("namedQuery", NamedQueryAnnotation::class);
+        $manager->registerAnnotation("notNull", NotNullAnnotation::class);
         $manager->registerAnnotation("oneToMany", OneToManyAnnotation::class);
         $manager->registerAnnotation("oneToOne", OneToOneAnnotation::class);
         $manager->registerAnnotation("persistenceUnit", PersistenceUnitAnnotation::class);
-        $manager->registerAnnotation("namedQuery", NamedQueryAnnotation::class);
+        $manager->registerAnnotation("size", SizeAnnotation::class);
+        $manager->registerAnnotation("unique", UniqueAnnotation::class);
     }
 
     /**
