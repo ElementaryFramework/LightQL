@@ -63,4 +63,32 @@ class EntityAnnotation extends Annotation
      * @var integer
      */
     public $fetchMode = Entity::FETCH_LAZY;
+
+    /**
+     * Initialize the annotation.
+     *
+     * @param array $properties The array of annotation properties
+     *
+     * @throws AnnotationException
+     *
+     * @return void
+     */
+    public function initAnnotation(array $properties)
+    {
+        $this->map($properties, array('table', 'fetchMode'));
+
+        parent::initAnnotation($properties);
+
+        if ($this->fetchMode === "LAZY") {
+            $this->fetchMode = Entity::FETCH_LAZY;
+        }
+
+        if ($this->fetchMode === "EAGER") {
+            $this->fetchMode = Entity::FETCH_EAGER;
+        }
+
+        if (!isset($this->table)) {
+            throw new AnnotationException(self::class . " requires a \"table\" property");
+        }
+    }
 }
