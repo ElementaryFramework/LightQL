@@ -66,18 +66,11 @@ class PersistenceUnitAnnotation extends Annotation
      */
     public function initAnnotation(array $properties)
     {
-        if (isset($properties[0])) {
-            $this->name = strval($properties[0]);
-            unset($properties[0]);
-        }
+        $this->map($properties, array("name"));
 
         parent::initAnnotation($properties);
 
-        if ($this->name !== null && strlen($this->name) <= 0) {
-            throw new AnnotationException(self::class . ' requires a (string) name property.');
-        }
-
-        if ($this->name === null) {
+        if (($this->name !== null && strlen($this->name) <= 0) || $this->name === null) {
             throw new AnnotationException(self::class . ' requires a (string) name property.');
         }
     }
