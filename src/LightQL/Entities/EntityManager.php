@@ -34,6 +34,7 @@ namespace ElementaryFramework\LightQL\Entities;
 
 use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
+use ElementaryFramework\LightQL\Exceptions\ValueValidatorException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 
@@ -42,7 +43,6 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
  *
  * Manage all entities, using one same persistence unit.
  *
- * @final
  * @category Entities
  * @package  LightQL
  * @author   Nana Axel <ax.lnana@outlook.com>
@@ -144,7 +144,7 @@ final class EntityManager
     /**
      * Persists an entity into the database.
      *
-     * @param Entity $entity The entity to create.
+     * @param Entity &$entity The entity to create.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
@@ -158,6 +158,19 @@ final class EntityManager
 
         $autoIncrementProperty = null;
         $idProperty = null;
+        $valueValidator = null;
+
+        if (Annotations::classHasAnnotation($entity, "@validator")) {
+            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
+
+            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
+                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
+
+                $valueValidator = $validatorClass->newInstance();
+            } else {
+                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
+            }
+        }
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
@@ -203,8 +216,19 @@ final class EntityManager
             }
         }
 
+        /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+            $value = $this->_lightql->quote($entity->get($column->getName()));
+
+            if ($valueValidator !== null) {
+                if ($valueValidator->validate($entityAnnotation[0]->table, $column->getName(), $value)) {
+                    $fieldAndValues[$column->getName()] = $value;
+                } else {
+                    throw new ValueValidatorException($property);
+                }
+            } else {
+                $fieldAndValues[$column->getName()] = $value;
+            }
         }
 
         $this->_lightql->beginTransaction();
@@ -228,7 +252,7 @@ final class EntityManager
     /**
      * Merges the entity in the database with the given one.
      *
-     * @param Entity $entity The entity to edit.
+     * @param Entity &$entity The entity to edit.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
@@ -239,11 +263,24 @@ final class EntityManager
 
         $columns = $entity->getColumns();
         $fieldAndValues = array();
+        $valueValidator = null;
 
         $where = array();
 
         $entityReflection = new \ReflectionClass($entity);
         $entityProperties = $entityReflection->getProperties();
+
+        if (Annotations::classHasAnnotation($entity, "@validator")) {
+            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
+
+            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
+                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
+
+                $valueValidator = $validatorClass->newInstance();
+            } else {
+                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
+            }
+        }
 
         /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
@@ -261,8 +298,19 @@ final class EntityManager
             }
         }
 
+        /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+            $value = $this->_lightql->quote($entity->get($column->getName()));
+
+            if ($valueValidator !== null) {
+                if ($valueValidator->validate($entityAnnotation[0]->table, $column->getName(), $value)) {
+                    $fieldAndValues[$column->getName()] = $value;
+                } else {
+                    throw new ValueValidatorException($property);
+                }
+            } else {
+                $fieldAndValues[$column->getName()] = $value;
+            }
 
             if ($column->isPrimaryKey) {
                 $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
@@ -287,7 +335,7 @@ final class EntityManager
     /**
      * Removes an entity from the database.
      *
-     * @param Entity $entity The entity to delete.
+     * @param Entity &$entity The entity to delete.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
