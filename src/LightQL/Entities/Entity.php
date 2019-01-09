@@ -154,8 +154,6 @@ abstract class Entity implements IEntity
                 } elseif (\is_null($this->{$property}) || $this->{$property} === null) {
                     $this->{$property} = $column->getDefault();
                 }
-            } else {
-                $this->{$property} = null;
             }
         }
     }
