@@ -33,9 +33,9 @@
 namespace ElementaryFramework\LightQL\Entities;
 
 /**
- * IEntityIdGenerator
+ * IValueValidator
  *
- * Defines a class as a primary key generator of a column.
+ * Defines a class as the value validator of an entity.
  *
  * @category Entities
  * @package  LightQL
@@ -47,11 +47,10 @@ interface IValueValidator
     /**
      * Validates a value before send it to the database.
      *
-     * @param string $table  The name of the table in which the value will be sent.
-     * @param string $column The name of the column which will receive the value.
-     * @param mixed  $value  The value to validate.
+     * @param Entity $entity   The entity which will be sent to the database.
+     * @param string $property The name of the property to validate.
      *
      * @return bool <b>true</b> if the value passes the validator, <b>false</b> otherwise.
      */
-    function validate(string $table, string $column, $value): bool;
+    function validate(Entity $entity, string $property): bool;
 }

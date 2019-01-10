@@ -221,7 +221,7 @@ final class EntityManager
             $value = $this->_lightql->quote($entity->get($column->getName()));
 
             if ($valueValidator !== null) {
-                if ($valueValidator->validate($entityAnnotation[0]->table, $column->getName(), $value)) {
+                if ($valueValidator->validate($entity, $property)) {
                     $fieldAndValues[$column->getName()] = $value;
                 } else {
                     throw new ValueValidatorException($property);
@@ -303,7 +303,7 @@ final class EntityManager
             $value = $this->_lightql->quote($entity->get($column->getName()));
 
             if ($valueValidator !== null) {
-                if ($valueValidator->validate($entityAnnotation[0]->table, $column->getName(), $value)) {
+                if ($valueValidator->validate($entity, $property)) {
                     $fieldAndValues[$column->getName()] = $value;
                 } else {
                     throw new ValueValidatorException($property);
