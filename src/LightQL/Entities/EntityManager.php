@@ -158,7 +158,10 @@ final class EntityManager
 
         $autoIncrementProperty = null;
         $idProperty = null;
+        /** @var IValueValidator $valueValidator */
         $valueValidator = null;
+        /** @var IValueTransformer $valueTransformer */
+        $valueTransformer = null;
 
         if (Annotations::classHasAnnotation($entity, "@validator")) {
             $validatorAnnotation = Annotations::ofClass($entity, "@validator");
@@ -169,6 +172,18 @@ final class EntityManager
                 $valueValidator = $validatorClass->newInstance();
             } else {
                 throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
+            }
+        }
+
+        if (Annotations::classHasAnnotation($entity, "@transformer")) {
+            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
+
+            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
+                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
+
+                $valueTransformer = $transformerClass->newInstance();
+            } else {
+                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
             }
         }
 
@@ -220,15 +235,15 @@ final class EntityManager
         foreach ($columns as $property => $column) {
             $value = $this->_lightql->quote($entity->get($column->getName()));
 
-            if ($valueValidator !== null) {
-                if ($valueValidator->validate($entity, $property)) {
-                    $fieldAndValues[$column->getName()] = $value;
-                } else {
-                    throw new ValueValidatorException($property);
-                }
-            } else {
-                $fieldAndValues[$column->getName()] = $value;
+            if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
+                throw new ValueValidatorException($property);
             }
+
+            if ($valueTransformer !== null) {
+                $value = $valueTransformer->toDatabaseValue($entity, $property);
+            }
+
+            $fieldAndValues[$column->getName()] = $value;
         }
 
         $this->_lightql->beginTransaction();
@@ -263,7 +278,10 @@ final class EntityManager
 
         $columns = $entity->getColumns();
         $fieldAndValues = array();
+        /** @var IValueValidator $valueValidator */
         $valueValidator = null;
+        /** @var IValueTransformer $valueTransformer */
+        $valueTransformer = null;
 
         $where = array();
 
@@ -279,6 +297,18 @@ final class EntityManager
                 $valueValidator = $validatorClass->newInstance();
             } else {
                 throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
+            }
+        }
+
+        if (Annotations::classHasAnnotation($entity, "@transformer")) {
+            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
+
+            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
+                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
+
+                $valueTransformer = $transformerClass->newInstance();
+            } else {
+                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
             }
         }
 
@@ -302,15 +332,15 @@ final class EntityManager
         foreach ($columns as $property => $column) {
             $value = $this->_lightql->quote($entity->get($column->getName()));
 
-            if ($valueValidator !== null) {
-                if ($valueValidator->validate($entity, $property)) {
-                    $fieldAndValues[$column->getName()] = $value;
-                } else {
-                    throw new ValueValidatorException($property);
-                }
-            } else {
-                $fieldAndValues[$column->getName()] = $value;
+            if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
+                throw new ValueValidatorException($property);
             }
+
+            if ($valueTransformer !== null) {
+                $value = $valueTransformer->toDatabaseValue($entity, $property);
+            }
+
+            $fieldAndValues[$column->getName()] = $value;
 
             if ($column->isPrimaryKey) {
                 $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));

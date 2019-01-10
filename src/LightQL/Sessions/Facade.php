@@ -39,6 +39,7 @@ use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
+use ElementaryFramework\LightQL\Entities\IValueTransformer;
 use ElementaryFramework\LightQL\Entities\Query;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\Exceptions\FacadeException;
@@ -542,7 +543,7 @@ abstract class Facade implements IFacade
      * Parses raw data to Entity.
      *
      * @param array $rawEntity   Raw entity data provided from database.
-     * @param array $annotations The set of entity annotations.
+     * @param EntityAnnotation[] $annotations The set of entity annotations.
      *
      * @return Entity
      *
@@ -552,6 +553,28 @@ abstract class Facade implements IFacade
      */
     private function _parseRawEntity($rawEntity, $annotations): Entity
     {
+        /** @var IValueTransformer $valueTransformer */
+        $valueTransformer = null;
+
+        if (Annotations::classHasAnnotation($this->getEntityClassName(), "@transformer")) {
+            $transformerAnnotation = Annotations::ofClass($this->getEntityClassName(), "@transformer");
+
+            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
+                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
+
+                $valueTransformer = $transformerClass->newInstance();
+            } else {
+                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
+            }
+        }
+
+        if ($valueTransformer !== null) {
+            foreach ($rawEntity as $column => &$value) {
+                $value = $valueTransformer->toEntityValue($annotations[0]->table, $column, $value);
+            }
+            unset($value);
+        }
+
         /** @var Entity $entity */
         $entity = $this->_class->newInstance($rawEntity);
 
