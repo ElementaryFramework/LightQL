@@ -53,5 +53,5 @@ interface IValueValidator
      *
      * @return bool <b>true</b> if the value passes the validator, <b>false</b> otherwise.
      */
-    function validate(string $table, string $column, $value);
+    function validate(string $table, string $column, $value): bool;
 }
