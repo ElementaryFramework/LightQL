@@ -240,7 +240,7 @@ final class EntityManager
             }
 
             if ($valueTransformer !== null) {
-                $value = $valueTransformer->toDatabaseValue($entity, $property);
+                $value = $this->_lightql->quote($valueTransformer->toDatabaseValue($entity, $property));
             }
 
             $fieldAndValues[$column->getName()] = $value;
@@ -337,7 +337,7 @@ final class EntityManager
             }
 
             if ($valueTransformer !== null) {
-                $value = $valueTransformer->toDatabaseValue($entity, $property);
+                $value = $this->_lightql->quote($valueTransformer->toDatabaseValue($entity, $property));
             }
 
             $fieldAndValues[$column->getName()] = $value;
