@@ -1,3 +1,7 @@
+<center>
+![Banner](./assets/banner.png)
+</center>
+
 # LightQL
 
 The lightweight PHP ORM
