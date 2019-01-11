@@ -47,6 +47,7 @@ use ElementaryFramework\LightQL\Annotations\OneToManyAnnotation;
 use ElementaryFramework\LightQL\Annotations\OneToOneAnnotation;
 use ElementaryFramework\LightQL\Annotations\PersistenceUnitAnnotation;
 use ElementaryFramework\LightQL\Annotations\SizeAnnotation;
+use ElementaryFramework\LightQL\Annotations\TransformerAnnotation;
 use ElementaryFramework\LightQL\Annotations\UniqueAnnotation;
 use ElementaryFramework\LightQL\Annotations\ValidatorAnnotation;
 
@@ -89,6 +90,7 @@ class LightQL
         $manager->registerAnnotation("oneToOne", OneToOneAnnotation::class);
         $manager->registerAnnotation("persistenceUnit", PersistenceUnitAnnotation::class);
         $manager->registerAnnotation("size", SizeAnnotation::class);
+        $manager->registerAnnotation("transformer", TransformerAnnotation::class);
         $manager->registerAnnotation("unique", UniqueAnnotation::class);
         $manager->registerAnnotation("validator", ValidatorAnnotation::class);
     }
