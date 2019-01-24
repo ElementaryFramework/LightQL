@@ -1,5 +1,7 @@
 <center>
+
 ![Banner](./assets/banner.png)
+
 </center>
 
 # LightQL
