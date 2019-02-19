@@ -85,7 +85,8 @@ final class EntityManager
                 "database" => $this->_persistenceUnit->getDatabase(),
                 "hostname" => $this->_persistenceUnit->getHostname(),
                 "username" => $this->_persistenceUnit->getUsername(),
-                "password" => $this->_persistenceUnit->getPassword()
+                "password" => $this->_persistenceUnit->getPassword(),
+                "port" => $this->_persistenceUnit->getPort()
             )
         );
     }
@@ -146,8 +147,10 @@ final class EntityManager
      *
      * @param Entity &$entity The entity to create.
      *
+     * @throws EntityException
+     * @throws ValueValidatorException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws \ReflectionException
      */
     public function persist(Entity &$entity)
     {
@@ -158,34 +161,8 @@ final class EntityManager
 
         $autoIncrementProperty = null;
         $idProperty = null;
-        /** @var IValueValidator $valueValidator */
-        $valueValidator = null;
-        /** @var IValueTransformer $valueTransformer */
-        $valueTransformer = null;
-
-        if (Annotations::classHasAnnotation($entity, "@validator")) {
-            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
-
-            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
-                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
-
-                $valueValidator = $validatorClass->newInstance();
-            } else {
-                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
-            }
-        }
-
-        if (Annotations::classHasAnnotation($entity, "@transformer")) {
-            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
-
-            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
-                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
-
-                $valueTransformer = $transformerClass->newInstance();
-            } else {
-                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
-            }
-        }
+        $valueValidator = $this->_getValueValidatorOfEntity($entity);
+        $valueTransformer = $this->_getValueTransformerOfEntity($entity);
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
@@ -253,7 +230,7 @@ final class EntityManager
                 ->insert($fieldAndValues);
 
             if ($autoIncrementProperty !== null) {
-                $entity->$autoIncrementProperty = $this->_lightql->lastInsertID();
+                $entity->{$autoIncrementProperty} = $this->_lightql->lastInsertID();
             }
 
             $this->_lightql->commit();
@@ -269,8 +246,10 @@ final class EntityManager
      *
      * @param Entity &$entity The entity to edit.
      *
+     * @throws EntityException
+     * @throws ValueValidatorException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws \ReflectionException
      */
     public function merge(Entity &$entity)
     {
@@ -278,39 +257,13 @@ final class EntityManager
 
         $columns = $entity->getColumns();
         $fieldAndValues = array();
-        /** @var IValueValidator $valueValidator */
-        $valueValidator = null;
-        /** @var IValueTransformer $valueTransformer */
-        $valueTransformer = null;
+        $valueValidator = $this->_getValueValidatorOfEntity($entity);
+        $valueTransformer = $this->_getValueTransformerOfEntity($entity);
 
         $where = array();
 
         $entityReflection = new \ReflectionClass($entity);
         $entityProperties = $entityReflection->getProperties();
-
-        if (Annotations::classHasAnnotation($entity, "@validator")) {
-            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
-
-            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
-                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
-
-                $valueValidator = $validatorClass->newInstance();
-            } else {
-                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
-            }
-        }
-
-        if (Annotations::classHasAnnotation($entity, "@transformer")) {
-            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
-
-            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
-                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
-
-                $valueTransformer = $transformerClass->newInstance();
-            } else {
-                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
-            }
-        }
 
         /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
@@ -367,15 +320,15 @@ final class EntityManager
      *
      * @param Entity &$entity The entity to delete.
      *
+     * @throws EntityException
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws \ReflectionException
      */
     public function delete(Entity &$entity)
     {
         $entityAnnotation = Annotations::ofClass($entity, "@entity");
 
         $columns = $entity->getColumns();
-        $fieldAndValues = array();
 
         $where = array();
         $pk = array();
@@ -416,7 +369,7 @@ final class EntityManager
 
             if (count($pk) > 0) {
                 foreach ($pk as $item) {
-                    $entity->$item = null;
+                    $entity->{$item} = null;
                 }
             }
 
@@ -437,5 +390,53 @@ final class EntityManager
     public function getLightQL(): LightQL
     {
         return $this->_lightql;
+    }
+
+    /**
+     * @param $entity
+     * @return IValueValidator
+     * @throws EntityException
+     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws \ReflectionException
+     */
+    private function _getValueValidatorOfEntity($entity)
+    {
+        if (Annotations::classHasAnnotation($entity, "@validator")) {
+            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
+
+            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
+                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
+
+                return $validatorClass->newInstance();
+            } else {
+                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param $entity
+     * @return IValueTransformer
+     * @throws EntityException
+     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws \ReflectionException
+     */
+    private function _getValueTransformerOfEntity($entity)
+    {
+        if (Annotations::classHasAnnotation($entity, "@transformer")) {
+            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
+
+            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
+                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
+
+                return $transformerClass->newInstance();
+            } else {
+                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
+            }
+        }
+
+        return null;
     }
 }
