@@ -846,7 +846,7 @@ class LightQL
         $column = implode(",", $columns);
         $value = implode(",", $values);
 
-        $this->_queryString = trim("INSERT INTO {$this->table}({$column}) VALUE ({$value})");
+        $this->_queryString = trim("INSERT INTO {$this->table}({$column}) VALUES ({$value})");
 
         $getFieldsData = $this->prepare($this->_queryString);
 
