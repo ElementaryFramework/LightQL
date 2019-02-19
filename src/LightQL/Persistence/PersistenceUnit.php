@@ -82,6 +82,13 @@ class PersistenceUnit
     private $_password;
 
     /**
+     * The port number of the DBMS.
+     *
+     * @var int
+     */
+    private $_port;
+
+    /**
      * The list of registered persistence unit files.
      *
      * @var array
@@ -132,6 +139,25 @@ class PersistenceUnit
                 $content = parse_ini_file(self::$_registry[$key]);
             } elseif ($extension === "json") {
                 $content = json_decode(file_get_contents(self::$_registry[$key]), true);
+            } elseif ($extension === "xml") {
+                $dom = new \DOMDocument("1.0", "utf-8");
+                $dom->loadXML(file_get_contents(self::$_registry[$key]));
+                if ($dom->documentElement->nodeName !== "persistenceUnit") {
+                    throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided.");
+                } else {
+                    /** @var \DOMElement $node */
+                    foreach ($dom->documentElement->childNodes as $node) {
+                        switch (strtolower($node->nodeName)) {
+                            case "dbms":     $content["DBMS"]         = $node->nodeValue; break;
+                            case "hostname": $content["Hostname"]     = $node->nodeValue; break;
+                            case "database": $content["DatabaseName"] = $node->nodeValue; break;
+                            case "username": $content["Username"]     = $node->nodeValue; break;
+                            case "password": $content["Password"]     = $node->nodeValue; break;
+                            case "port":     $content["Port"]         = $node->nodeValue; break;
+                            default: throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided. Unknown configuration item \"{$node->nodeName}\"");
+                        }
+                    }
+                }
             } else {
                 throw new PersistenceUnitException("Unsupported file type used to create persistence unit {$filename}.");
             }
@@ -165,6 +191,10 @@ class PersistenceUnit
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the Password value.");
             }
+
+            $this->_port = array_key_exists("Port", $content)
+                ? intval($content["Port"])
+                : null;
         } else {
             throw new PersistenceUnitException('Unable to find the persistence unit with the key "' . $key . '". Have you registered this persistence unit?');
         }
@@ -176,8 +206,9 @@ class PersistenceUnit
      * @param string $key The persistence unit name.
      *
      * @return PersistenceUnit
+     * @throws PersistenceUnitException
      */
-    public static function create(string $key)
+    public static function create(string $key): PersistenceUnit
     {
         if (array_key_exists($key, self::$_units)) {
             return self::$_units[$key];
@@ -191,7 +222,7 @@ class PersistenceUnit
      *
      * @return string
      */
-    public function getDbms()
+    public function getDbms(): string
     {
         return $this->_dbms;
     }
@@ -234,5 +265,15 @@ class PersistenceUnit
     public function getUsername(): string
     {
         return $this->_username;
+    }
+
+    /**
+     * Returns the port number.
+     *
+     * @return int
+     */
+    public function getPort(): int
+    {
+        return $this->_port;
     }
 }
