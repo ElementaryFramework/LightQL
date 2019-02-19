@@ -34,7 +34,7 @@ namespace ElementaryFramework\LightQL\Sessions;
 
 use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\Annotations\Exceptions\AnnotationException;
-
+use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
 use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
@@ -43,6 +43,7 @@ use ElementaryFramework\LightQL\Entities\IValueTransformer;
 use ElementaryFramework\LightQL\Entities\Query;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\Exceptions\FacadeException;
+use ElementaryFramework\LightQL\Exceptions\OperationCancelledException;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 
 /**
@@ -73,14 +74,23 @@ abstract class Facade implements IFacade
     private $_class;
 
     /**
+     * The listener of this facade.
+     *
+     * @var IFacadeListener
+     */
+    private $_listener;
+
+    /**
      * Facade constructor.
      *
      * @param string $class The entity class name managed by this facade.
      *
-     * @throws EntityException When the entity class or object doesn't have an @entity annotation.
-     * @throws FacadeException When the "entityManager" property of this Facade doesn't have a @persistenceUnit annotation.
-     * @throws FacadeException When the entity class or object doesn't inherit from the Entity class.
      * @throws AnnotationException When the Facade is unable to read an annotation.
+     * @throws EntityException When the entity class or object doesn't have an @entity annotation.
+     * @throws FacadeException When the entity class or object doesn't inherit from the Entity class.
+     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ElementaryFramework\LightQL\Exceptions\PersistenceUnitException
+     * @throws \ReflectionException
      */
     public function __construct($class)
     {
@@ -96,6 +106,11 @@ abstract class Facade implements IFacade
             throw new FacadeException("Unable to create a facade. The entity class or object seems to be invalid.");
         }
 
+        if (Annotations::classHasAnnotation($this, "@listener")) {
+            $listenerReflection = new \ReflectionClass(Annotations::ofClass($this, "@listener")[0]->listener);
+            $this->_listener = $listenerReflection->newInstance();
+        }
+
         $this->_class = new \ReflectionClass($class);
 
         $annotations = Annotations::ofProperty($this, "entityManager", "@persistenceUnit");
@@ -107,14 +122,18 @@ abstract class Facade implements IFacade
      *
      * @param Entity $entity The entity to create.
      *
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws AnnotationException
+     * @throws FacadeException When the facade is unable to create the entity.
+     * @throws OperationCancelledException When the operation has been cancelled by a listener
      */
     public function create(Entity &$entity)
     {
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot create entity. The type of the entity is not valid for this facade.");
+        }
+
+        if ($this->_listener instanceof IFacadeListener && !$this->_listener->beforeCreate($entity)) {
+            throw new OperationCancelledException(Annotations::ofClass($this, "@listener")[0]->listener);
         }
 
         try {
@@ -132,8 +151,10 @@ abstract class Facade implements IFacade
                     $this->_fetchOneToOne($entity, $property);
                 }
             }
+
+            $this->_listener instanceof IFacadeListener && $this->_listener->onCreate($entity);
         } catch (\Exception $e) {
-            throw new FacadeException($e->getMessage());
+            throw new FacadeException("Unable to create the entity. See internal exception for more details.", 0, $e);
         }
     }
 
@@ -142,9 +163,12 @@ abstract class Facade implements IFacade
      *
      * @param Entity $entity The entity to edit.
      *
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws AnnotationException
+     * @throws EntityException
+     * @throws FacadeException When the facade is unable to edit the entity
+     * @throws OperationCancelledException When the operation has been cancelled by a listener
+     * @throws \ElementaryFramework\LightQL\Exceptions\ValueValidatorException
+     * @throws \ReflectionException
      */
     public function edit(Entity &$entity)
     {
@@ -152,7 +176,13 @@ abstract class Facade implements IFacade
             throw new FacadeException("Cannot edit entity. The type of the entity is not valid for this facade.");
         }
 
+        if ($this->_listener instanceof IFacadeListener && !$this->_listener->beforeEdit($entity)) {
+            throw new OperationCancelledException(Annotations::ofClass($this, "@listener")[0]->listener);
+        }
+
         $this->entityManager->merge($entity);
+
+        $this->_listener instanceof IFacadeListener && $this->_listener->onEdit($entity);
     }
 
     /**
@@ -160,18 +190,27 @@ abstract class Facade implements IFacade
      *
      * @param Entity $entity The entity to delete.
      *
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws AnnotationException
+     * @throws EntityException
+     * @throws FacadeException When the facade is unable to delete the entity
+     * @throws OperationCancelledException When the operation has been cancelled by a listener
+     * @throws \ElementaryFramework\LightQL\Exceptions\ValueValidatorException
+     * @throws \ReflectionException
      */
     public function delete(Entity &$entity)
     {
         if (!$this->_class->isInstance($entity)) {
-            throw new FacadeException("Cannot edit entity. The type of the entity is not valid for this facade.");
+            throw new FacadeException("Cannot delete entity. The type of the entity is not valid for this facade.");
+        }
+
+        if ($this->_listener instanceof IFacadeListener && !$this->_listener->beforeDelete($entity)) {
+            throw new OperationCancelledException(Annotations::ofClass($this, "@listener")[0]->listener);
         }
 
         $this->entityManager->merge($entity);
         $this->entityManager->delete($entity);
+
+        $this->_listener instanceof IFacadeListener && $this->_listener->onDelete($entity);
     }
 
     /**
@@ -181,8 +220,10 @@ abstract class Facade implements IFacade
      *
      * @return Entity
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
+     * @throws EntityException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ReflectionException
      */
     public function find($id): Entity
     {
@@ -199,9 +240,10 @@ abstract class Facade implements IFacade
      *
      * @return Entity[]
      *
+     * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ReflectionException
      */
     public function findAll(): array
     {
@@ -218,14 +260,15 @@ abstract class Facade implements IFacade
     /**
      * Find all entities in the given range.
      *
-     * @param int $start  The starting offset.
+     * @param int $start The starting offset.
      * @param int $length The number of entities to find.
      *
      * @return Entity[]
      *
+     * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ReflectionException
      */
     public function findRange(int $start, int $length): array
     {
@@ -330,10 +373,10 @@ abstract class Facade implements IFacade
     {
         $manyToMany = Annotations::ofProperty($entity, $property, "@manyToMany");
         $column = Annotations::ofProperty($entity, $property, "@column");
-        $entityAnnotations = Annotations::ofClass($entity, "@entity");
 
         $mappedPropertyName = null;
 
+        /** @var Entity $referencedEntity */
         $referencedEntity = new $manyToMany[0]->entity;
         foreach ($referencedEntity->getColumns() as $p => $c) {
             if ($c->isManyToMany) {
@@ -365,7 +408,7 @@ abstract class Facade implements IFacade
                     array(
                         "side" => "LEFT",
                         "table" => $referencedEntityAnnotations[0]->table,
-                        "cond" => "{$manyToMany[0]->crossTable}.{$mappedPropertyAnnotation[0]->referencedColumn} = {$referencedEntityAnnotations[0]->table}.{$mappedPropertyColumnAnnotation[0]->name}"
+                        "cond" => "{$manyToMany[0]->crossTable}.{$mappedPropertyManyToManyAnnotation[0]->referencedColumn} = {$referencedEntityAnnotations[0]->table}.{$mappedPropertyColumnAnnotation[0]->name}"
                     )
                 )
             );
@@ -379,10 +422,11 @@ abstract class Facade implements IFacade
     /**
      * Fetch data for a one-to-many relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in one-to-many relation.
+     * @param IEntity $entity The managed entity.
+     * @param string $property The property in one-to-many relation.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
+     * @throws EntityException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
     private function _fetchOneToMany(&$entity, $property)
@@ -396,8 +440,6 @@ abstract class Facade implements IFacade
         if ($mappedPropertyName === null) {
             throw new EntityException("Unable to find a suitable property with @manyToOne annotation in the entity \"{$oneToMany[0]->entity}\".");
         }
-
-        $mappedPropertyManyToOneAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $mappedPropertyName, "@manyToOne");
 
         $lightql = $this->entityManager->getLightQL();
 
@@ -418,10 +460,11 @@ abstract class Facade implements IFacade
     /**
      * Fetch data for a many-to-one relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in many-to-one relation.
+     * @param IEntity $entity The managed entity.
+     * @param string $property The property in many-to-one relation.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
+     * @throws EntityException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
     private function _fetchManyToOne(&$entity, $property)
@@ -454,10 +497,11 @@ abstract class Facade implements IFacade
     /**
      * Fetch data for a one-to-one relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in one-to-one relation.
+     * @param IEntity $entity The managed entity.
+     * @param string $property The property in one-to-one relation.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
+     * @throws EntityException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      */
     private function _fetchOneToOne(&$entity, $property)
@@ -471,8 +515,6 @@ abstract class Facade implements IFacade
         if ($mappedPropertyName === null) {
             throw new EntityException("Unable to find a suitable property with @oneToOne annotation in the entity \"{$oneToOne[0]->entity}\".");
         }
-
-        $mappedPropertyAnnotation = Annotations::ofProperty($oneToOne[0]->entity, $mappedPropertyName, "@oneToOne");
 
         $lightql = $this->entityManager->getLightQL();
 
@@ -504,6 +546,7 @@ abstract class Facade implements IFacade
     {
         $mappedPropertyName = null;
 
+        /** @var Entity $referencedEntity */
         $referencedEntity = new $entityClass;
         foreach ($referencedEntity->getColumns() as $p => $c) {
             if ($c->{"is{$check}"} && $c->getName() === $column) {
@@ -524,9 +567,10 @@ abstract class Facade implements IFacade
      *
      * @return Entity[]
      *
+     * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ReflectionException
      */
     private function _parseRawEntities($rawEntities, $annotations): array
     {
@@ -542,14 +586,15 @@ abstract class Facade implements IFacade
     /**
      * Parses raw data to Entity.
      *
-     * @param array $rawEntity   Raw entity data provided from database.
+     * @param array $rawEntity Raw entity data provided from database.
      * @param EntityAnnotation[] $annotations The set of entity annotations.
      *
      * @return Entity
      *
+     * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws \ReflectionException
      */
     private function _parseRawEntity($rawEntity, $annotations): Entity
     {
