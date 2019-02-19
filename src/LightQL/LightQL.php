@@ -33,12 +33,12 @@
 namespace ElementaryFramework\LightQL;
 
 use ElementaryFramework\Annotations\Annotations;
-
 use ElementaryFramework\LightQL\Annotations\AutoIncrementAnnotation;
 use ElementaryFramework\LightQL\Annotations\ColumnAnnotation;
 use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
 use ElementaryFramework\LightQL\Annotations\IdAnnotation;
 use ElementaryFramework\LightQL\Annotations\IdGeneratorAnnotation;
+use ElementaryFramework\LightQL\Annotations\ListenerAnnotation;
 use ElementaryFramework\LightQL\Annotations\ManyToManyAnnotation;
 use ElementaryFramework\LightQL\Annotations\ManyToOneAnnotation;
 use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
@@ -50,7 +50,6 @@ use ElementaryFramework\LightQL\Annotations\SizeAnnotation;
 use ElementaryFramework\LightQL\Annotations\TransformerAnnotation;
 use ElementaryFramework\LightQL\Annotations\UniqueAnnotation;
 use ElementaryFramework\LightQL\Annotations\ValidatorAnnotation;
-
 use ElementaryFramework\LightQL\Exceptions\LightQLException;
 
 /**
@@ -82,6 +81,7 @@ class LightQL
         $manager->registerAnnotation("entity", EntityAnnotation::class);
         $manager->registerAnnotation("id", IdAnnotation::class);
         $manager->registerAnnotation("idGenerator", IdGeneratorAnnotation::class);
+        $manager->registerAnnotation("listener", ListenerAnnotation::class);
         $manager->registerAnnotation("manyToMany", ManyToManyAnnotation::class);
         $manager->registerAnnotation("manyToOne", ManyToOneAnnotation::class);
         $manager->registerAnnotation("namedQuery", NamedQueryAnnotation::class);
