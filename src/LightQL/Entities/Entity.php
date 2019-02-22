@@ -35,7 +35,6 @@ namespace ElementaryFramework\LightQL\Entities;
 use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\Annotations\IAnnotation;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
-use ElementaryFramework\LightQL\Exceptions\AnnotationException;
 
 /**
  * Entity
@@ -87,7 +86,7 @@ abstract class Entity implements IEntity
      * @param array $data The raw database data.
      *
      * @throws EntityException
-     * @throws AnnotationException
+     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ReflectionException
      */
     public function __construct(array $data = array())
@@ -164,6 +163,7 @@ abstract class Entity implements IEntity
      * @param string $column The table column name.
      *
      * @return mixed
+     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      */
     public function get(string $column)
     {
