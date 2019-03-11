@@ -32,7 +32,7 @@
 
 namespace ElementaryFramework\LightQL\Sessions;
 
-use ElementaryFramework\LightQL\Entities\Entity;
+use ElementaryFramework\LightQL\Entities\IEntity;
 
 /**
  * IFacade
@@ -49,37 +49,37 @@ interface IFacade
     /**
      * Creates an entity.
      *
-     * @param Entity $entity The entity to create.
+     * @param IEntity $entity The entity to create.
      */
-    function create(Entity &$entity);
+    function create(IEntity &$entity);
 
     /**
      * Edit an entity.
      *
-     * @param Entity $entity The entity to edit.
+     * @param IEntity $entity The entity to edit.
      */
-    function edit(Entity &$entity);
+    function edit(IEntity &$entity);
 
     /**
      * Delete an entity.
      *
-     * @param Entity $entity The entity to delete.
+     * @param IEntity $entity The entity to delete.
      */
-    function delete(Entity &$entity);
+    function delete(IEntity &$entity);
 
     /**
      * Find an entity.
      *
      * @param mixed $id The id of the entity to find
      *
-     * @return Entity
+     * @return IEntity
      */
-    function find($id): Entity;
+    function find($id): IEntity;
 
     /**
      * Find all entities.
      *
-     * @return Entity[]
+     * @return IEntity[]
      */
     function findAll(): array;
 
@@ -89,7 +89,7 @@ interface IFacade
      * @param int $start  The starting offset.
      * @param int $length The number of entities to find.
      *
-     * @return Entity[]
+     * @return IEntity[]
      */
     function findRange(int $start, int $length): array;
 

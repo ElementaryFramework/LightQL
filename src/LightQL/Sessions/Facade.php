@@ -103,7 +103,7 @@ abstract class Facade implements IFacade
         }
 
         if (!is_subclass_of($class, Entity::class)) {
-            throw new FacadeException("Unable to create a facade. The entity class or object seems to be invalid.");
+            throw new FacadeException("Unable to create a facade. The entity class or object need to inherit directly from the class Entity.");
         }
 
         if (Annotations::classHasAnnotation($this, "@listener")) {
@@ -120,13 +120,13 @@ abstract class Facade implements IFacade
     /**
      * Creates an entity.
      *
-     * @param Entity $entity The entity to create.
+     * @param IEntity $entity The entity to create.
      *
      * @throws AnnotationException
      * @throws FacadeException When the facade is unable to create the entity.
      * @throws OperationCancelledException When the operation has been cancelled by a listener
      */
-    public function create(Entity &$entity)
+    public function create(IEntity &$entity)
     {
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot create entity. The type of the entity is not valid for this facade.");
@@ -161,7 +161,7 @@ abstract class Facade implements IFacade
     /**
      * Edit an entity.
      *
-     * @param Entity $entity The entity to edit.
+     * @param IEntity $entity The entity to edit.
      *
      * @throws AnnotationException
      * @throws EntityException
@@ -170,7 +170,7 @@ abstract class Facade implements IFacade
      * @throws \ElementaryFramework\LightQL\Exceptions\ValueValidatorException
      * @throws \ReflectionException
      */
-    public function edit(Entity &$entity)
+    public function edit(IEntity &$entity)
     {
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot edit entity. The type of the entity is not valid for this facade.");
@@ -188,7 +188,7 @@ abstract class Facade implements IFacade
     /**
      * Delete an entity.
      *
-     * @param Entity $entity The entity to delete.
+     * @param IEntity $entity The entity to delete.
      *
      * @throws AnnotationException
      * @throws EntityException
@@ -197,7 +197,7 @@ abstract class Facade implements IFacade
      * @throws \ElementaryFramework\LightQL\Exceptions\ValueValidatorException
      * @throws \ReflectionException
      */
-    public function delete(Entity &$entity)
+    public function delete(IEntity &$entity)
     {
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot delete entity. The type of the entity is not valid for this facade.");
@@ -218,14 +218,14 @@ abstract class Facade implements IFacade
      *
      * @param mixed $id The id of the entity to find
      *
-     * @return Entity
+     * @return IEntity
      *
      * @throws AnnotationException
      * @throws EntityException
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      * @throws \ReflectionException
      */
-    public function find($id): Entity
+    public function find($id): IEntity
     {
         $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
 

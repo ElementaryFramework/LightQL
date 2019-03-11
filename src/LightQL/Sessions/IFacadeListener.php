@@ -32,7 +32,7 @@
 
 namespace ElementaryFramework\LightQL\Sessions;
 
-use ElementaryFramework\LightQL\Entities\Entity;
+use ElementaryFramework\LightQL\Entities\IEntity;
 
 /**
  * IFacadeListener
@@ -49,48 +49,48 @@ interface IFacadeListener
     /**
      * An entity will be created.
      *
-     * @param Entity $entity The entity to create.
+     * @param IEntity $entity The entity to create.
      *
      * @return bool true if we can execute the query, false to cancel the entity creation.
      */
-    function beforeCreate(Entity &$entity): bool;
+    function beforeCreate(IEntity &$entity): bool;
 
     /**
      * An entity was just created.
      *
-     * @param Entity $entity The created entity.
+     * @param IEntity $entity The created entity.
      */
-    function onCreate(Entity $entity);
+    function onCreate(IEntity $entity);
 
     /**
      * An entity will be edited.
      *
-     * @param Entity $entity The entity to edit.
+     * @param IEntity $entity The entity to edit.
      *
      * @return bool true if we can execute the query, false to cancel the entity edition.
      */
-    function beforeEdit(Entity &$entity): bool;
+    function beforeEdit(IEntity &$entity): bool;
 
     /**
      * An entity was just edited.
      *
-     * @param Entity $entity The entity to edit.
+     * @param IEntity $entity The entity to edit.
      */
-    function onEdit(Entity $entity);
+    function onEdit(IEntity $entity);
 
     /**
      * An entity will be deleted.
      *
-     * @param Entity $entity The entity to delete.
+     * @param IEntity $entity The entity to delete.
      *
      * @return bool true if we can execute the query, false to cancel the entity deletion.
      */
-    function beforeDelete(Entity &$entity): bool;
+    function beforeDelete(IEntity &$entity): bool;
 
     /**
      * An entity was just deleted.
      *
-     * @param Entity $entity The entity to delete.
+     * @param IEntity $entity The entity to delete.
      */
-    function onDelete(Entity $entity);
+    function onDelete(IEntity $entity);
 }
