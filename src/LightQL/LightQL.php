@@ -261,7 +261,7 @@ class LightQL
                 return false;
             }
         } else {
-            if (isset($options["port"]) && is_int($options["port"] * 1)) {
+            if (isset($options["port"]) && is_int($options["port"] * 1) && intval($options["port"]) > -1) {
                 $port = $options["port"];
             }
 
@@ -620,7 +620,7 @@ class LightQL
      *
      * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
      *
-     * @return array
+     * @return array|null
      */
     public function selectFirst($columns = "*")
     {
@@ -805,13 +805,13 @@ class LightQL
         $getFieldsData = $this->prepare($this->_queryString);
 
         if ($getFieldsData->execute() !== false) {
+            $this->resetClauses();
+
             if (null === $this->_group) {
-                $this->resetClauses();
                 $data = $getFieldsData->fetch();
                 return (int) $data['lightql_count'];
             }
 
-            $this->resetClauses();
             $res = array();
 
             while ($data = $getFieldsData->fetch()) {
