@@ -86,7 +86,7 @@ class PersistenceUnit
      *
      * @var int
      */
-    private $_port;
+    private $_port = -1;
 
     /**
      * The list of registered persistence unit files.
@@ -148,12 +148,16 @@ class PersistenceUnit
                     /** @var \DOMElement $node */
                     foreach ($dom->documentElement->childNodes as $node) {
                         switch (strtolower($node->nodeName)) {
+                            case "#text":
+                                break;
                             case "dbms":     $content["DBMS"]         = $node->nodeValue; break;
                             case "hostname": $content["Hostname"]     = $node->nodeValue; break;
                             case "database": $content["DatabaseName"] = $node->nodeValue; break;
                             case "username": $content["Username"]     = $node->nodeValue; break;
                             case "password": $content["Password"]     = $node->nodeValue; break;
-                            case "port":     $content["Port"]         = $node->nodeValue; break;
+                            case "port":
+                                $content["Port"] = intval($node->nodeValue);
+                                break;
                             default: throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided. Unknown configuration item \"{$node->nodeName}\"");
                         }
                     }
@@ -196,7 +200,7 @@ class PersistenceUnit
                 ? intval($content["Port"])
                 : null;
         } else {
-            throw new PersistenceUnitException('Unable to find the persistence unit with the key "' . $key . '". Have you registered this persistence unit?');
+            throw new PersistenceUnitException("Unable to find the persistence unit with the key \"{$key}\". Have you registered this persistence unit?");
         }
     }
 
