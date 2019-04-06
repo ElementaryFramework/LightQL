@@ -130,18 +130,24 @@ class PersistenceUnit
     private function __construct(string $key)
     {
         if (array_key_exists($key, self::$_registry)) {
-            $filename = basename(self::$_registry[$key]);
+            $filepath = self::$_registry[$key];
+
+            if (!file_exists($filepath)) {
+                throw new PersistenceUnitException("The persistence unit file at the path \"{$filepath}\" cannot be found.");
+            }
+
+            $filename = basename($filepath);
             $parts = explode(".", $filename);
             $extension = $parts[count($parts) - 1];
 
             $content = null;
             if ($extension === "ini") {
-                $content = parse_ini_file(self::$_registry[$key]);
+                $content = parse_ini_file($filepath);
             } elseif ($extension === "json") {
-                $content = json_decode(file_get_contents(self::$_registry[$key]), true);
+                $content = json_decode(file_get_contents($filepath), true);
             } elseif ($extension === "xml") {
                 $dom = new \DOMDocument("1.0", "utf-8");
-                $dom->loadXML(file_get_contents(self::$_registry[$key]));
+                $dom->loadXML(file_get_contents($filepath));
                 if ($dom->documentElement->nodeName !== "persistenceUnit") {
                     throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided.");
                 } else {
