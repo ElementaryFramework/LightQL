@@ -2,6 +2,9 @@
   "name": "elementaryframework/light-ql",
   "description": "The lightweight PHP ORM",
   "type": "library",
+  "bin": [
+    "bin/light-ql"
+  ],
   "require-dev": {
     "phpunit/phpunit": "^7"
   },
@@ -14,7 +17,10 @@
   ],
   "require": {
     "php": "^7.1.10",
-    "elementaryframework/annotations": "^2.0.1"
+    "ext-pdo": "*",
+    "elementaryframework/annotations": "^2.0.1",
+    "nette/php-generator": "^3.2",
+    "symfony/console": "^4.2"
   },
   "keywords": [
     "orm",
