@@ -18,7 +18,7 @@
   "require": {
     "php": "^7.1.10",
     "ext-pdo": "*",
-    "elementaryframework/annotations": "^2.0.1",
+    "elementaryframework/annotations": "^2.0.2",
     "nette/php-generator": "^3.2",
     "symfony/console": "^4.2"
   },
