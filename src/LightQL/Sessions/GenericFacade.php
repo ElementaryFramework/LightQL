@@ -123,7 +123,7 @@ final class GenericFacade implements IFacade
                 $this->_lightql
                     ->from($entity->getName())
                     ->where(array(
-                        $entity->getPk() => $this->_lightql->quote($entity->get($entity->getPk()))
+                        $entity->getPk() => $this->_lightql->parseValue($entity->get($entity->getPk()))
                     ))
                     ->update($entity->getData());
 
@@ -153,7 +153,7 @@ final class GenericFacade implements IFacade
                 $this->_lightql
                     ->from($entity->getName())
                     ->where(array(
-                        $entity->getPk() => $this->_lightql->quote($entity->get($entity->getPk()))
+                        $entity->getPk() => $this->_lightql->parseValue($entity->get($entity->getPk()))
                     ))
                     ->delete();
 
@@ -199,7 +199,7 @@ final class GenericFacade implements IFacade
     {
         $raw = $this->_lightql
             ->from($table)
-            ->where(array($pk => $this->_lightql->quote($id)))
+            ->where(array($pk => $this->_lightql->parseValue($id)))
             ->selectFirst();
 
         return new GenericEntity($table, $pk, $raw);

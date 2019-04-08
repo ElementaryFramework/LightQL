@@ -1060,7 +1060,7 @@ class LightQL
         } elseif (is_bool($value)) {
             return $value ? "1" : "0";
         } else {
-            return strval($value);
+            return $this->_pdo->quote(strval($value));
         }
     }
 }

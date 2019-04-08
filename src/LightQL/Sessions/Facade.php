@@ -401,7 +401,7 @@ abstract class Facade implements IFacade
 
         $results = $lightql
             ->from($manyToMany[0]->crossTable)
-            ->where(array("{$manyToMany[0]->crossTable}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
+            ->where(array("{$manyToMany[0]->crossTable}.{$manyToMany[0]->referencedColumn}" => $lightql->parseValue($entity->get($column[0]->name))))
             ->joinArray(
                 "{$referencedEntityAnnotations[0]->table}.*",
                 array(
@@ -445,7 +445,7 @@ abstract class Facade implements IFacade
 
         $result = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToMany[0]->referencedColumn}" => $lightql->parseValue($entity->get($column[0]->name))))
             ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
 
         $className = $oneToMany[0]->entity;
@@ -483,7 +483,7 @@ abstract class Facade implements IFacade
 
         $results = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->parseValue($entity->get($column[0]->name))))
             ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
         $entity->{$property} = array_map(function($item) use ($manyToOne, $entity, $mappedPropertyName) {
@@ -520,7 +520,7 @@ abstract class Facade implements IFacade
 
         $result = $lightql
             ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
+            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToOne[0]->referencedColumn}" => $lightql->parseValue($entity->get($column[0]->name))))
             ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
 
         $className = $oneToOne[0]->entity;

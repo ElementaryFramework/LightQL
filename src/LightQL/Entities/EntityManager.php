@@ -121,14 +121,14 @@ final class EntityManager
             foreach ($properties as $property) {
                 if (Annotations::propertyHasAnnotation($id, $property->getName(), "@id") && Annotations::propertyHasAnnotation($id, $property->getName(), "@column")) {
                     $name = Annotations::ofProperty($id, $property->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$property->getName()});
+                    $where[$name] = $this->_lightql->parseValue($id->{$property->getName()});
                 }
             }
         } else {
             foreach ($columns as $property => $column) {
                 if (count($where) === 0) {
                     if ($column->isPrimaryKey) {
-                        $where[$column->getName()] = $this->_lightql->quote($id);
+                        $where[$column->getName()] = $this->_lightql->parseValue($id);
                     }
                 } else break;
             }
@@ -210,14 +210,14 @@ final class EntityManager
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $value = $this->_lightql->quote($entity->get($column->getName()));
+            $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
                 throw new ValueValidatorException($property);
             }
 
             if ($valueTransformer !== null) {
-                $value = $this->_lightql->quote($valueTransformer->toDatabaseValue($entity, $property));
+                $value = $this->_lightql->parseValue($valueTransformer->toDatabaseValue($entity, $property));
             }
 
             $fieldAndValues[$column->getName()] = $value;
@@ -274,7 +274,7 @@ final class EntityManager
 
                 foreach ($propertyProperties as $key) {
                     $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $where[$name] = $this->_lightql->parseValue($id->{$key->getName()});
                 }
 
                 break;
@@ -283,20 +283,20 @@ final class EntityManager
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $value = $this->_lightql->quote($entity->get($column->getName()));
+            $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
                 throw new ValueValidatorException($property);
             }
 
             if ($valueTransformer !== null) {
-                $value = $this->_lightql->quote($valueTransformer->toDatabaseValue($entity, $property));
+                $value = $this->_lightql->parseValue($valueTransformer->toDatabaseValue($entity, $property));
             }
 
             $fieldAndValues[$column->getName()] = $value;
 
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->getName()] = $this->_lightql->parseValue($entity->get($column->getName()));
             }
         }
 
@@ -345,7 +345,7 @@ final class EntityManager
 
                 foreach ($propertyProperties as $key) {
                     $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $where[$name] = $this->_lightql->parseValue($id->{$key->getName()});
                     $pk[] = $property->getName();
                 }
 
@@ -355,7 +355,7 @@ final class EntityManager
 
         foreach ($columns as $property => $column) {
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] =  $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->getName()] = $this->_lightql->parseValue($entity->get($column->getName()));
                 $pk[] = $property;
             }
         }
