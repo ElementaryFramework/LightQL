@@ -115,7 +115,7 @@ final class EntityManager
 
         if ($id instanceof IPrimaryKey) {
             $pkClass = new \ReflectionClass($id);
-            $properties = $pkClass->getProperties();
+            $properties = $pkClass->getProperties(T_PUBLIC);
 
             /** @var \ReflectionProperty $property */
             foreach ($properties as $property) {
@@ -263,14 +263,14 @@ final class EntityManager
         $where = array();
 
         $entityReflection = new \ReflectionClass($entity);
-        $entityProperties = $entityReflection->getProperties();
+        $entityProperties = $entityReflection->getProperties(T_PUBLIC);
 
         /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
             $id = $entity->{$property->getName()};
             if ($id instanceof IPrimaryKey) {
                 $propertyReflection = new \ReflectionClass($id);
-                $propertyProperties = $propertyReflection->getProperties();
+                $propertyProperties = $propertyReflection->getProperties(T_PUBLIC);
 
                 foreach ($propertyProperties as $key) {
                     $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
@@ -334,14 +334,14 @@ final class EntityManager
         $pk = array();
 
         $entityReflection = new \ReflectionClass($entity);
-        $entityProperties = $entityReflection->getProperties();
+        $entityProperties = $entityReflection->getProperties(T_PUBLIC);
 
         /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
             $id = $entity->{$property->getName()};
             if ($id instanceof IPrimaryKey) {
                 $propertyReflection = new \ReflectionClass($id);
-                $propertyProperties = $propertyReflection->getProperties();
+                $propertyProperties = $propertyReflection->getProperties(T_PUBLIC);
 
                 foreach ($propertyProperties as $key) {
                     $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;

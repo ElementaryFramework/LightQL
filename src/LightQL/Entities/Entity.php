@@ -96,7 +96,7 @@ abstract class Entity implements IEntity
         }
 
         $this->_reflection = new \ReflectionClass($this);
-        $properties = $this->_reflection->getProperties();
+        $properties = $this->_reflection->getProperties(T_PUBLIC);
 
         $pkFound = false;
 

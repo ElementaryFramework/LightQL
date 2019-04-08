@@ -624,7 +624,7 @@ abstract class Facade implements IFacade
         $entity = $this->_class->newInstance($rawEntity);
 
         if ($annotations[0]->fetchMode === Entity::FETCH_EAGER) {
-            $properties = $this->_class->getProperties();
+            $properties = $this->_class->getProperties(T_PUBLIC);
 
             foreach ($properties as $property) {
                 if (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
