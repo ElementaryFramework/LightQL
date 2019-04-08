@@ -223,6 +223,16 @@ abstract class Entity implements IEntity
     }
 
     /**
+     * Gets the entity as array.
+     *
+     * @return array
+     */
+    public function getRawEntity(): array
+    {
+        return $this->raw;
+    }
+
+    /**
      * Checks if a property has the given annotation.
      *
      * @param string $property   The name of the property.
