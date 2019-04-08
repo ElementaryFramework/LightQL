@@ -451,7 +451,7 @@ class LightQL
                 if (is_int($column)) {
                     $this->_where .= $value;
                 } else {
-                    $parts = explode(" ", $this->parseValue($value));
+                    $parts = explode(" ", $value);
                     foreach (self::$_operators as $operator) {
                         if (in_array($operator, $parts, true) && $parts[0] === $operator) {
                             $operand = $operator;
@@ -840,7 +840,7 @@ class LightQL
 
         foreach ($fieldsAndValues as $column => $value) {
             $columns[] = $column;
-            $values[] = $this->parseValue($value);
+            $values[] = $value;
         }
 
         $column = implode(",", $columns);
@@ -907,7 +907,7 @@ class LightQL
         if (is_array($fieldsAndValues)) {
             foreach ($fieldsAndValues as $column => $value) {
                 $count--;
-                $updates .= "{$column} = " . $this->parseValue($value);
+                $updates .= "{$column} = " . $value;
                 $updates .= ($count != 0) ? ", " : "";
             }
         } else {
@@ -1060,7 +1060,7 @@ class LightQL
         } elseif (is_bool($value)) {
             return $value ? "1" : "0";
         } else {
-            return $this->_pdo->quote(strval($value));
+            return $this->quote(strval($value));
         }
     }
 }
