@@ -32,6 +32,7 @@
 
 namespace ElementaryFramework\LightQL\CLI\Commands;
 
+use ElementaryFramework\LightQL\CLI\Utils\EntityFilePrinter;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
@@ -235,7 +236,7 @@ class GenerateEntitiesCommand extends Command
             }
         }
 
-        $printer = new \Nette\PhpGenerator\PsrPrinter;
+        $printer = new EntityFilePrinter;
         $out = $printer->printFile($file);
 
         file_put_contents($input->getOption(self::OPTION_OUTPUT_DIR) . DIRECTORY_SEPARATOR . "{$className}.php", $out);
