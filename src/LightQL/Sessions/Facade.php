@@ -43,7 +43,10 @@ use ElementaryFramework\LightQL\Entities\IValueTransformer;
 use ElementaryFramework\LightQL\Entities\Query;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\Exceptions\FacadeException;
+use ElementaryFramework\LightQL\Exceptions\LightQLException;
 use ElementaryFramework\LightQL\Exceptions\OperationCancelledException;
+use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
+use ElementaryFramework\LightQL\Exceptions\ValueValidatorException;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 
 /**
@@ -88,8 +91,8 @@ abstract class Facade implements IFacade
      * @throws AnnotationException When the Facade is unable to read an annotation.
      * @throws EntityException When the entity class or object doesn't have an @entity annotation.
      * @throws FacadeException When the entity class or object doesn't inherit from the Entity class.
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     * @throws \ElementaryFramework\LightQL\Exceptions\PersistenceUnitException
+     * @throws LightQLException
+     * @throws PersistenceUnitException
      * @throws \ReflectionException
      */
     public function __construct($class)
@@ -167,7 +170,7 @@ abstract class Facade implements IFacade
      * @throws EntityException
      * @throws FacadeException When the facade is unable to edit the entity
      * @throws OperationCancelledException When the operation has been cancelled by a listener
-     * @throws \ElementaryFramework\LightQL\Exceptions\ValueValidatorException
+     * @throws ValueValidatorException
      * @throws \ReflectionException
      */
     public function edit(IEntity &$entity)
@@ -194,7 +197,7 @@ abstract class Facade implements IFacade
      * @throws EntityException
      * @throws FacadeException When the facade is unable to delete the entity
      * @throws OperationCancelledException When the operation has been cancelled by a listener
-     * @throws \ElementaryFramework\LightQL\Exceptions\ValueValidatorException
+     * @throws ValueValidatorException
      * @throws \ReflectionException
      */
     public function delete(IEntity &$entity)
@@ -218,14 +221,14 @@ abstract class Facade implements IFacade
      *
      * @param mixed $id The id of the entity to find
      *
-     * @return IEntity
+     * @return IEntity|null
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      * @throws \ReflectionException
      */
-    public function find($id): IEntity
+    public function find($id): ?IEntity
     {
         $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
 
@@ -242,7 +245,7 @@ abstract class Facade implements IFacade
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      * @throws \ReflectionException
      */
     public function findAll(): array
@@ -267,7 +270,7 @@ abstract class Facade implements IFacade
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      * @throws \ReflectionException
      */
     public function findRange(int $start, int $length): array
@@ -288,8 +291,8 @@ abstract class Facade implements IFacade
      *
      * @return int
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws AnnotationException
+     * @throws LightQLException
      */
     public function count(): int
     {
@@ -329,7 +332,7 @@ abstract class Facade implements IFacade
      * @return Query
      *
      * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      */
     public function getNamedQuery(string $name): Query
     {
@@ -366,8 +369,8 @@ abstract class Facade implements IFacade
      * @param string  $property The property in many-to-many relation.
      *
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws AnnotationException
+     * @throws LightQLException
      */
     private function _fetchManyToMany(&$entity, $property)
     {
@@ -427,7 +430,7 @@ abstract class Facade implements IFacade
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     private function _fetchOneToMany(&$entity, $property)
     {
@@ -465,7 +468,7 @@ abstract class Facade implements IFacade
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     private function _fetchManyToOne(&$entity, $property)
     {
@@ -502,7 +505,7 @@ abstract class Facade implements IFacade
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     private function _fetchOneToOne(&$entity, $property)
     {
@@ -569,7 +572,7 @@ abstract class Facade implements IFacade
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      * @throws \ReflectionException
      */
     private function _parseRawEntities($rawEntities, $annotations): array
@@ -586,18 +589,21 @@ abstract class Facade implements IFacade
     /**
      * Parses raw data to Entity.
      *
-     * @param array $rawEntity Raw entity data provided from database.
+     * @param array|null $rawEntity Raw entity data provided from database.
      * @param EntityAnnotation[] $annotations The set of entity annotations.
      *
-     * @return Entity
+     * @return Entity|null
      *
      * @throws AnnotationException
      * @throws EntityException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      * @throws \ReflectionException
      */
-    private function _parseRawEntity($rawEntity, $annotations): Entity
+    private function _parseRawEntity($rawEntity, $annotations): ?Entity
     {
+        if ($rawEntity === null)
+            return null;
+
         /** @var IValueTransformer $valueTransformer */
         $valueTransformer = null;
 

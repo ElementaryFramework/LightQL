@@ -36,6 +36,7 @@ use ElementaryFramework\LightQL\Entities\GenericEntity;
 use ElementaryFramework\LightQL\Entities\IEntity;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\Exceptions\FacadeException;
+use ElementaryFramework\LightQL\Exceptions\LightQLException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 
@@ -60,7 +61,7 @@ final class GenericFacade implements IFacade
      *
      * @param PersistenceUnit $persistenceUnit The persistence unit to use with this GenericFacade.
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     public function __construct(PersistenceUnit $persistenceUnit)
     {
@@ -175,11 +176,11 @@ final class GenericFacade implements IFacade
      *
      * @param mixed $id The id of the entity to find
      *
-     * @return IEntity
+     * @return IEntity|null
      *
      * @throws FacadeException
      */
-    public function find($id): IEntity
+    public function find($id): ?IEntity
     {
         throw new FacadeException("The \"find\" method is unavailable in GenericFacade, use \"findGeneric\" instead.");
     }
@@ -191,16 +192,19 @@ final class GenericFacade implements IFacade
      * @param string $pk The name of the column with primary key property
      * @param mixed $id The pk value of the entity to find
      *
-     * @return IEntity
+     * @return IEntity|null
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
-    public function findGeneric(string $table, string $pk, $id): IEntity
+    public function findGeneric(string $table, string $pk, $id): ?IEntity
     {
         $raw = $this->_lightql
             ->from($table)
             ->where(array($pk => $this->_lightql->parseValue($id)))
             ->selectFirst();
+
+        if ($raw === null)
+            return null;
 
         return new GenericEntity($table, $pk, $raw);
     }
@@ -227,7 +231,7 @@ final class GenericFacade implements IFacade
      *
      * @return IEntity[]
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     public function findAllGeneric(string $table, string $pk): array
     {
@@ -267,7 +271,7 @@ final class GenericFacade implements IFacade
      *
      * @return IEntity[]
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     public function findRangeGeneric(string $table, string $pk, int $start, int $length): array
     {
@@ -302,7 +306,7 @@ final class GenericFacade implements IFacade
      *
      * @return int
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     public function countGeneric(string $table): int
     {
