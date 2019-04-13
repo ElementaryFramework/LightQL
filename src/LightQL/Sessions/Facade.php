@@ -545,7 +545,7 @@ abstract class Facade implements IFacade
      *
      * @return string|null
      */
-    private function _resolveMappedPropertyName(string $entityClass, string $check, string $column): string
+    private function _resolveMappedPropertyName(string $entityClass, string $check, string $column): ?string
     {
         $mappedPropertyName = null;
 
