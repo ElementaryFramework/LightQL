@@ -167,11 +167,6 @@ abstract class Entity implements IEntity
      */
     public function get(string $column)
     {
-        // Try to get the raw value
-        if ($this->_exists($column)) {
-            return $this->raw[$column];
-        }
-
         // Try to get the property value
         /** @var Column $c */
         foreach ($this->_columns as $property => $c) {
@@ -194,6 +189,11 @@ abstract class Entity implements IEntity
                     return $this->{$property};
                 }
             }
+        }
+
+        // Try to get the raw value
+        if ($this->_exists($column)) {
+            return $this->raw[$column];
         }
 
         // The value definitively doesn't exist
