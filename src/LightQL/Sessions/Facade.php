@@ -39,6 +39,7 @@ use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
+use ElementaryFramework\LightQL\Entities\IPrimaryKey;
 use ElementaryFramework\LightQL\Entities\IValueTransformer;
 use ElementaryFramework\LightQL\Entities\Query;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
@@ -626,6 +627,33 @@ abstract class Facade implements IFacade
             unset($value);
         }
 
+        /** @var IPrimaryKey $pkClass */
+        $pkClassReflection = null;
+        $pkClass = null;
+
+        if (Annotations::classHasAnnotation($this->getEntityClassName(), "@pkClass")) {
+            $pkClassAnnotation = Annotations::ofClass($this->getEntityClassName(), "@pkClass");
+
+            if (\is_subclass_of($pkClassAnnotation[0]->name, IPrimaryKey::class)) {
+                $pkClassReflection = new \ReflectionClass($pkClassAnnotation[0]->name);
+
+                $pkClass = $pkClassReflection->newInstance();
+            } else {
+                throw new EntityException("The primary key class of this entity doesn't implement the IPrimaryKey interface");
+            }
+        }
+
+        if ($pkClass !== null) {
+            $properties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            foreach ($properties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClass, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClass, $property->name, "@column");
+                    $pkClass->{$property->name} = $rawEntity[$columnAnnotations[0]->name];
+                }
+            }
+        }
+
         /** @var Entity $entity */
         $entity = $this->_class->newInstance($rawEntity);
 
@@ -633,7 +661,9 @@ abstract class Facade implements IFacade
             $properties = $this->_class->getProperties(T_PUBLIC);
 
             foreach ($properties as $property) {
-                if (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
+                if (Annotations::propertyHasAnnotation($entity, $property->name, "@id") && $pkClass !== null) {
+                    $entity->{$property->name} = $pkClass;
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
                     $this->_fetchManyToMany($entity, $property->name);
                 } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToMany")) {
                     $this->_fetchOneToMany($entity, $property->name);
