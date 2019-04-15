@@ -177,6 +177,19 @@ final class EntityManager
             }
         }
 
+        if ($idProperty === null) {
+            $entityReflection = new \ReflectionClass($entity);
+            $entityProperties = $entityReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($entityProperties as $property) {
+                if (Annotations::propertyHasAnnotation($entity, $property->name, "@id")) {
+                    $idProperty = $property->name;
+                    break;
+                }
+            }
+        }
+
         if ($idProperty !== null && ($autoIncrementProperty === null || $autoIncrementProperty !== $idProperty)) {
             // We have a non auto incremented primary key...
             // Check if the value is null or not set
@@ -206,6 +219,20 @@ final class EntityManager
                         " If the table primary key column is auto incremented, consider add the @autoIncrement annotation to the primary key class property." .
                         " If the table primary key column is not auto incremented, please give a value to the primary key class property before persist the entity, or use a @idGenerator annotation instead."
                     );
+                }
+            }
+        }
+
+        if (Annotations::classHasAnnotation($entity, "@pkClass")) {
+            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
+            $pkClassReflection = new \ReflectionClass($pkClassName);
+            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($pkClassProperties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
+                    $fieldAndValues[$columnAnnotations[0]->name] = $entity->{$idProperty}->{$property->name};
                 }
             }
         }

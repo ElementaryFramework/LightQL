@@ -46,6 +46,7 @@ use ElementaryFramework\LightQL\Annotations\NotNullAnnotation;
 use ElementaryFramework\LightQL\Annotations\OneToManyAnnotation;
 use ElementaryFramework\LightQL\Annotations\OneToOneAnnotation;
 use ElementaryFramework\LightQL\Annotations\PersistenceUnitAnnotation;
+use ElementaryFramework\LightQL\Annotations\PkClassAnnotation;
 use ElementaryFramework\LightQL\Annotations\SizeAnnotation;
 use ElementaryFramework\LightQL\Annotations\TransformerAnnotation;
 use ElementaryFramework\LightQL\Annotations\UniqueAnnotation;
@@ -89,6 +90,7 @@ class LightQL
         $manager->registerAnnotation("oneToMany", OneToManyAnnotation::class);
         $manager->registerAnnotation("oneToOne", OneToOneAnnotation::class);
         $manager->registerAnnotation("persistenceUnit", PersistenceUnitAnnotation::class);
+        $manager->registerAnnotation("pkClass", PkClassAnnotation::class);
         $manager->registerAnnotation("size", SizeAnnotation::class);
         $manager->registerAnnotation("transformer", TransformerAnnotation::class);
         $manager->registerAnnotation("unique", UniqueAnnotation::class);
