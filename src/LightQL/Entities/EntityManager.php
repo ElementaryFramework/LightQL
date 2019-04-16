@@ -33,7 +33,9 @@
 namespace ElementaryFramework\LightQL\Entities;
 
 use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\Annotations\Exceptions\AnnotationException;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
+use ElementaryFramework\LightQL\Exceptions\LightQLException;
 use ElementaryFramework\LightQL\Exceptions\ValueValidatorException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
@@ -71,7 +73,7 @@ final class EntityManager
      *
      * @param PersistenceUnit $persistenceUnit The persistence unit to use in this manager.
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
     public function __construct(PersistenceUnit $persistenceUnit)
     {
@@ -97,13 +99,13 @@ final class EntityManager
      * @param string $entityClass The class name of the entity to find.
      * @param mixed $id           The value of the primary key.
      *
-     * @return array Raw data from database.
+     * @return array|null Raw data from database or null if no data.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws AnnotationException
+     * @throws LightQLException
      * @throws \ReflectionException
      */
-    public function find(string $entityClass, $id): array
+    public function find(string $entityClass, $id): ?array
     {
         $entityAnnotation = Annotations::ofClass($entityClass, "@entity");
 
@@ -115,20 +117,20 @@ final class EntityManager
 
         if ($id instanceof IPrimaryKey) {
             $pkClass = new \ReflectionClass($id);
-            $properties = $pkClass->getProperties();
+            $properties = $pkClass->getProperties(T_PUBLIC);
 
             /** @var \ReflectionProperty $property */
             foreach ($properties as $property) {
                 if (Annotations::propertyHasAnnotation($id, $property->getName(), "@id") && Annotations::propertyHasAnnotation($id, $property->getName(), "@column")) {
                     $name = Annotations::ofProperty($id, $property->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$property->getName()});
+                    $where[$name] = $this->_lightql->parseValue($id->{$property->getName()});
                 }
             }
         } else {
             foreach ($columns as $property => $column) {
                 if (count($where) === 0) {
                     if ($column->isPrimaryKey) {
-                        $where[$column->getName()] = $this->_lightql->quote($id);
+                        $where[$column->getName()] = $this->_lightql->parseValue($id);
                     }
                 } else break;
             }
@@ -149,7 +151,7 @@ final class EntityManager
      *
      * @throws EntityException
      * @throws ValueValidatorException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      * @throws \ReflectionException
      */
     public function persist(Entity &$entity)
@@ -172,6 +174,19 @@ final class EntityManager
 
             if ($idProperty === null && $column->isPrimaryKey) {
                 $idProperty = $property;
+            }
+        }
+
+        if ($idProperty === null) {
+            $entityReflection = new \ReflectionClass($entity);
+            $entityProperties = $entityReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($entityProperties as $property) {
+                if (Annotations::propertyHasAnnotation($entity, $property->name, "@id")) {
+                    $idProperty = $property->name;
+                    break;
+                }
             }
         }
 
@@ -208,16 +223,30 @@ final class EntityManager
             }
         }
 
+        if (Annotations::classHasAnnotation($entity, "@pkClass")) {
+            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
+            $pkClassReflection = new \ReflectionClass($pkClassName);
+            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($pkClassProperties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
+                    $fieldAndValues[$columnAnnotations[0]->name] = $entity->{$idProperty}->{$property->name};
+                }
+            }
+        }
+
         /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $value = $this->_lightql->quote($entity->get($column->getName()));
+            $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
                 throw new ValueValidatorException($property);
             }
 
             if ($valueTransformer !== null) {
-                $value = $this->_lightql->quote($valueTransformer->toDatabaseValue($entity, $property));
+                $value = $this->_lightql->parseValue($valueTransformer->toDatabaseValue($entity, $property));
             }
 
             $fieldAndValues[$column->getName()] = $value;
@@ -248,7 +277,7 @@ final class EntityManager
      *
      * @throws EntityException
      * @throws ValueValidatorException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      * @throws \ReflectionException
      */
     public function merge(Entity &$entity)
@@ -263,18 +292,18 @@ final class EntityManager
         $where = array();
 
         $entityReflection = new \ReflectionClass($entity);
-        $entityProperties = $entityReflection->getProperties();
+        $entityProperties = $entityReflection->getProperties(T_PUBLIC);
 
         /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
             $id = $entity->{$property->getName()};
             if ($id instanceof IPrimaryKey) {
                 $propertyReflection = new \ReflectionClass($id);
-                $propertyProperties = $propertyReflection->getProperties();
+                $propertyProperties = $propertyReflection->getProperties(T_PUBLIC);
 
                 foreach ($propertyProperties as $key) {
                     $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $where[$name] = $this->_lightql->parseValue($id->{$key->getName()});
                 }
 
                 break;
@@ -283,20 +312,20 @@ final class EntityManager
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
-            $value = $this->_lightql->quote($entity->get($column->getName()));
+            $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
                 throw new ValueValidatorException($property);
             }
 
             if ($valueTransformer !== null) {
-                $value = $this->_lightql->quote($valueTransformer->toDatabaseValue($entity, $property));
+                $value = $this->_lightql->parseValue($valueTransformer->toDatabaseValue($entity, $property));
             }
 
             $fieldAndValues[$column->getName()] = $value;
 
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->getName()] = $this->_lightql->parseValue($entity->get($column->getName()));
             }
         }
 
@@ -321,7 +350,7 @@ final class EntityManager
      * @param Entity &$entity The entity to delete.
      *
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      * @throws \ReflectionException
      */
     public function delete(Entity &$entity)
@@ -334,18 +363,18 @@ final class EntityManager
         $pk = array();
 
         $entityReflection = new \ReflectionClass($entity);
-        $entityProperties = $entityReflection->getProperties();
+        $entityProperties = $entityReflection->getProperties(T_PUBLIC);
 
         /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
             $id = $entity->{$property->getName()};
             if ($id instanceof IPrimaryKey) {
                 $propertyReflection = new \ReflectionClass($id);
-                $propertyProperties = $propertyReflection->getProperties();
+                $propertyProperties = $propertyReflection->getProperties(T_PUBLIC);
 
                 foreach ($propertyProperties as $key) {
                     $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $where[$name] = $this->_lightql->parseValue($id->{$key->getName()});
                     $pk[] = $property->getName();
                 }
 
@@ -355,7 +384,7 @@ final class EntityManager
 
         foreach ($columns as $property => $column) {
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] =  $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->getName()] = $this->_lightql->parseValue($entity->get($column->getName()));
                 $pk[] = $property;
             }
         }
@@ -396,7 +425,7 @@ final class EntityManager
      * @param $entity
      * @return IValueValidator
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      * @throws \ReflectionException
      */
     private function _getValueValidatorOfEntity($entity)
@@ -420,7 +449,7 @@ final class EntityManager
      * @param $entity
      * @return IValueTransformer
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws AnnotationException
      * @throws \ReflectionException
      */
     private function _getValueTransformerOfEntity($entity)

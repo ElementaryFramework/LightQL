@@ -202,9 +202,9 @@ class PersistenceUnit
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the Password value.");
             }
 
-            $this->_port = array_key_exists("Port", $content)
-                ? intval($content["Port"])
-                : null;
+            if (array_key_exists("Port", $content)) {
+                $this->_port = intval($content["Port"]);
+            }
         } else {
             throw new PersistenceUnitException("Unable to find the persistence unit with the key \"{$key}\". Have you registered this persistence unit?");
         }

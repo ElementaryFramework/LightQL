@@ -72,9 +72,9 @@ interface IFacade
      *
      * @param mixed $id The id of the entity to find
      *
-     * @return IEntity
+     * @return IEntity|null
      */
-    function find($id): IEntity;
+    function find($id): ?IEntity;
 
     /**
      * Find all entities.

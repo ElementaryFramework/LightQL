@@ -96,7 +96,7 @@ abstract class Entity implements IEntity
         }
 
         $this->_reflection = new \ReflectionClass($this);
-        $properties = $this->_reflection->getProperties();
+        $properties = $this->_reflection->getProperties(T_PUBLIC);
 
         $pkFound = false;
 
@@ -167,11 +167,6 @@ abstract class Entity implements IEntity
      */
     public function get(string $column)
     {
-        // Try to get the raw value
-        if ($this->_exists($column)) {
-            return $this->raw[$column];
-        }
-
         // Try to get the property value
         /** @var Column $c */
         foreach ($this->_columns as $property => $c) {
@@ -190,10 +185,15 @@ abstract class Entity implements IEntity
                         $referencedColumn = $this->_getMetadata($property, "@oneToOne", "referencedColumn");
                         return $this->{$property}->get($referencedColumn);
                     }
-                } else {
+                } elseif ($this->{$property} !== null) {
                     return $this->{$property};
                 }
             }
+        }
+
+        // Try to get the raw value
+        if ($this->_exists($column)) {
+            return $this->raw[$column];
         }
 
         // The value definitively doesn't exist
@@ -220,6 +220,16 @@ abstract class Entity implements IEntity
     public function getColumns(): array
     {
         return $this->_columns;
+    }
+
+    /**
+     * Gets the entity as array.
+     *
+     * @return array
+     */
+    public function getRawEntity(): array
+    {
+        return $this->raw;
     }
 
     /**
