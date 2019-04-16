@@ -132,6 +132,10 @@ abstract class Facade implements IFacade
      */
     public function create(IEntity &$entity)
     {
+        if (!($entity instanceof Entity)) {
+            throw new EntityException("The Facade class works only with classes extending Entity.");
+        }
+
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot create entity. The type of the entity is not valid for this facade.");
         }
@@ -176,6 +180,10 @@ abstract class Facade implements IFacade
      */
     public function edit(IEntity &$entity)
     {
+        if (!($entity instanceof Entity)) {
+            throw new EntityException("The Facade class works only with classes extending Entity.");
+        }
+
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot edit entity. The type of the entity is not valid for this facade.");
         }
@@ -203,6 +211,10 @@ abstract class Facade implements IFacade
      */
     public function delete(IEntity &$entity)
     {
+        if (!($entity instanceof Entity)) {
+            throw new EntityException("The Facade class works only with classes extending Entity.");
+        }
+
         if (!$this->_class->isInstance($entity)) {
             throw new FacadeException("Cannot delete entity. The type of the entity is not valid for this facade.");
         }
@@ -394,7 +406,7 @@ abstract class Facade implements IFacade
         unset($referencedEntity);
 
         if ($mappedPropertyName === null) {
-            throw new EntityException("Unable to find a suitable property with a @manyToMany annotation in the entity \"$manyToMany[0]->entity\".");
+            throw new EntityException("Unable to find a suitable property with a @manyToMany annotation in the entity \"{$manyToMany[0]->entity}\".");
         }
 
         $mappedPropertyManyToManyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $mappedPropertyName, "@manyToMany");
