@@ -41,15 +41,17 @@ class EntityFilePrinter extends \Nette\PhpGenerator\Printer
         $uses = [];
         foreach ($namespace->getUses() as $alias => $original) {
             if ($alias === $original || substr($original, -(strlen($alias) + 1)) === '\\' . $alias) {
-                $uses[] = "use {$original};";
+                $uses[$original] = "use {$original};";
             } else {
-                $uses[] = "use {$original} as {$alias};";
+                $uses[$original] = "use {$original} as {$alias};";
             }
         }
 
         $classes = [];
-        foreach ($namespace->getClasses() as $class) {
+        foreach ($namespace->getClasses() as $className => $class) {
             $classes[] = $this->printClass($class, $namespace);
+            unset($uses["{$name}\\{$className}"]);
+            unset($uses[$className]);
         }
 
         $body = ($uses ? implode("\n", $uses) . "\n\n" : '')
