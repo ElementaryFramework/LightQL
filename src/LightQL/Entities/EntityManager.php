@@ -239,6 +239,10 @@ final class EntityManager
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
+            if ($column->isManyToOne) {
+                continue;
+            }
+
             $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
@@ -321,6 +325,10 @@ final class EntityManager
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
+            if ($column->isManyToOne) {
+                continue;
+            }
+
             $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {

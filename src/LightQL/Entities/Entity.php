@@ -185,7 +185,7 @@ abstract class Entity implements IEntity
                         $referencedColumn = $this->_getMetadata($property, "@oneToOne", "referencedColumn");
                         return $this->{$property}->get($referencedColumn);
                     }
-                } elseif ($this->{$property} !== null) {
+                } elseif (!$c->isManyToOne && $this->{$property} !== null) {
                     return $this->{$property};
                 }
             }
