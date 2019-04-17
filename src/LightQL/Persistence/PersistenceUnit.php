@@ -162,7 +162,7 @@ class PersistenceUnit
                             case "username": $content["Username"]     = $node->nodeValue; break;
                             case "password": $content["Password"]     = $node->nodeValue; break;
                             case "port":
-                                $content["Port"] = intval($node->nodeValue);
+                                $content["Port"] = $node->nodeValue;
                                 break;
                             default: throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided. Unknown configuration item \"{$node->nodeName}\"");
                         }
