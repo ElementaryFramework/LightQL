@@ -252,7 +252,12 @@ final class EntityManager
             $fieldAndValues[$column->getName()] = $value;
         }
 
-        $this->_lightql->beginTransaction();
+        $inTransaction = $this->_lightql->inTransaction();
+
+        if (!$inTransaction) {
+            $this->_lightql->beginTransaction();
+        }
+
         try {
             $this->_lightql
                 ->from($entityAnnotation[0]->table)
@@ -262,9 +267,13 @@ final class EntityManager
                 $entity->{$autoIncrementProperty} = $this->_lightql->lastInsertID();
             }
 
-            $this->_lightql->commit();
+            if (!$inTransaction) {
+                $this->_lightql->commit();
+            }
         } catch (\Exception $e) {
-            $this->_lightql->rollback();
+            if (!$inTransaction) {
+                $this->_lightql->rollback();
+            }
 
             throw new EntityException($e->getMessage());
         }
@@ -329,16 +338,25 @@ final class EntityManager
             }
         }
 
-        $this->_lightql->beginTransaction();
+        $inTransaction = $this->_lightql->inTransaction();
+
+        if (!$inTransaction) {
+            $this->_lightql->beginTransaction();
+        }
+
         try {
             $this->_lightql
                 ->from($entityAnnotation[0]->table)
                 ->where($where)
                 ->update($fieldAndValues);
 
-            $this->_lightql->commit();
+            if (!$inTransaction) {
+                $this->_lightql->commit();
+            }
         } catch (\Exception $e) {
-            $this->_lightql->rollback();
+            if (!$inTransaction) {
+                $this->_lightql->rollback();
+            }
 
             throw new EntityException($e->getMessage());
         }
@@ -389,7 +407,12 @@ final class EntityManager
             }
         }
 
-        $this->_lightql->beginTransaction();
+        $inTransaction = $this->_lightql->inTransaction();
+
+        if (!$inTransaction) {
+            $this->_lightql->beginTransaction();
+        }
+
         try {
             $this->_lightql
                 ->from($entityAnnotation[0]->table)
@@ -402,9 +425,13 @@ final class EntityManager
                 }
             }
 
-            $this->_lightql->commit();
+            if (!$inTransaction) {
+                $this->_lightql->commit();
+            }
         } catch (\Exception $e) {
-            $this->_lightql->rollback();
+            if (!$inTransaction) {
+                $this->_lightql->rollback();
+            }
 
             throw new EntityException($e->getMessage());
         }
