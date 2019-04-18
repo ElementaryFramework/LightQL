@@ -53,6 +53,13 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 final class EntityManager
 {
     /**
+     * The array of existing LightQL connections.
+     *
+     * @var array
+     */
+    private static $_connections = array();
+
+    /**
      * The persistence unit of this entity
      * manager.
      *
@@ -80,17 +87,23 @@ final class EntityManager
         // Save the persistence unit
         $this->_persistenceUnit = $persistenceUnit;
 
-        // Create a LightQL instance
-        $this->_lightql = new LightQL(
-            array(
-                "dbms" => $this->_persistenceUnit->getDbms(),
-                "database" => $this->_persistenceUnit->getDatabase(),
-                "hostname" => $this->_persistenceUnit->getHostname(),
-                "username" => $this->_persistenceUnit->getUsername(),
-                "password" => $this->_persistenceUnit->getPassword(),
-                "port" => $this->_persistenceUnit->getPort()
-            )
-        );
+        if (!array_key_exists($persistenceUnit->getKey(), static::$_connections)) {
+            // Create a LightQL instance
+            $this->_lightql = new LightQL(
+                array(
+                    "dbms" => $this->_persistenceUnit->getDbms(),
+                    "database" => $this->_persistenceUnit->getDatabase(),
+                    "hostname" => $this->_persistenceUnit->getHostname(),
+                    "username" => $this->_persistenceUnit->getUsername(),
+                    "password" => $this->_persistenceUnit->getPassword(),
+                    "port" => $this->_persistenceUnit->getPort()
+                )
+            );
+
+            static::$_connections[$persistenceUnit->getKey()] = $this->_lightql;
+        } else {
+            $this->_lightql = static::$_connections[$persistenceUnit->getKey()];
+        }
     }
 
     /**
