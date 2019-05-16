@@ -162,6 +162,8 @@ final class EntityManager
      *
      * @param Entity &$entity The entity to create.
      *
+     * @return array
+     *
      * @throws EntityException
      * @throws ValueValidatorException
      * @throws AnnotationException
@@ -236,20 +238,6 @@ final class EntityManager
             }
         }
 
-        if (Annotations::classHasAnnotation($entity, "@pkClass")) {
-            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
-            $pkClassReflection = new \ReflectionClass($pkClassName);
-            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
-
-            /** @var \ReflectionProperty $property */
-            foreach ($pkClassProperties as $property) {
-                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
-                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
-                    $fieldAndValues[$columnAnnotations[0]->name] = $entity->{$idProperty}->{$property->name};
-                }
-            }
-        }
-
         /** @var Column $column */
         foreach ($columns as $property => $column) {
             if ($column->isManyToOne) {
@@ -269,6 +257,20 @@ final class EntityManager
             $fieldAndValues[$column->getName()] = $value;
         }
 
+        if (Annotations::classHasAnnotation($entity, "@pkClass")) {
+            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
+            $pkClassReflection = new \ReflectionClass($pkClassName);
+            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($pkClassProperties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
+                    $fieldAndValues[$columnAnnotations[0]->name] = $this->_lightql->parseValue($entity->{$idProperty}->{$property->name});
+                }
+            }
+        }
+
         $inTransaction = $this->_lightql->inTransaction();
 
         if (!$inTransaction) {
@@ -280,10 +282,6 @@ final class EntityManager
                 ->from($entityAnnotation[0]->table)
                 ->insert($fieldAndValues);
 
-            if ($autoIncrementProperty !== null) {
-                $entity->{$autoIncrementProperty} = $this->_lightql->lastInsertID();
-            }
-
             if (!$inTransaction) {
                 $this->_lightql->commit();
             }
@@ -292,8 +290,32 @@ final class EntityManager
                 $this->_lightql->rollback();
             }
 
-            throw new EntityException($e->getMessage());
+            throw new EntityException("Unable to persist the entity. See internal exception to learn more.", 0, $e);
         }
+
+        $where = array();
+        if ($autoIncrementProperty !== null) {
+            $where[$columns[$autoIncrementProperty]->getName()] = $this->_lightql->lastInsertID();
+        } elseif ($entity->{$idProperty} instanceof IPrimaryKey) {
+            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
+            $pkClassReflection = new \ReflectionClass($pkClassName);
+            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($pkClassProperties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
+                    $where[$columnAnnotations[0]->name] = $this->_lightql->parseValue($entity->{$idProperty}->{$property->name});
+                }
+            }
+        } else {
+            $where[$columns[$idProperty]->getName()] = $this->_lightql->parseValue($entity->{$idProperty});
+        }
+
+        return $this->_lightql
+            ->from($entityAnnotation[0]->table)
+            ->where($where)
+            ->selectFirst();
     }
 
     /**

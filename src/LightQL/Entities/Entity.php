@@ -153,6 +153,9 @@ abstract class Entity implements IEntity
                 } elseif (\is_null($this->{$property}) || $this->{$property} === null) {
                     $this->{$property} = $column->getDefault();
                 }
+            } elseif (array_key_exists($column->getName(), $this->raw)) {
+                // TODO: Find a way to fill the property with the good value
+                $this->{$property} = null;
             }
         }
     }
