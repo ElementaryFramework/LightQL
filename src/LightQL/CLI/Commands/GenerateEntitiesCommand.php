@@ -36,16 +36,25 @@ use ElementaryFramework\LightQL\CLI\Utils\EntityFilePrinter;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
+use ElementaryFramework\LightQL\Entities\IPrimaryKey;
+
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Exception\InvalidOptionException;
 
 /**
  * Class GenerateEntitiesCommand
  */
 class GenerateEntitiesCommand extends Command
 {
+    const OPTION_FROM_DATABASE = "from-database";
+    const OPTION_FROM_DATABASE_SHORT = "D";
+
+    const OPTION_FROM_SCHEMA = "from-schema";
+    const OPTION_FROM_SCHEMA_SHORT = "S";
+
     const OPTION_PERSISTENCE_UNIT = "persistence-unit";
     const OPTION_PERSISTENCE_UNIT_SHORT = "p";
 
@@ -72,13 +81,26 @@ class GenerateEntitiesCommand extends Command
     public function configure()
     {
         $this
-            ->setDescription("Generate LightQL entities form database")
-            ->addOption(self::OPTION_PERSISTENCE_UNIT, self::OPTION_PERSISTENCE_UNIT_SHORT, InputOption::VALUE_REQUIRED, "The path to the LightQL persistence unit file.")
+            ->setDescription("Generate LightQL entities")
+            ->addOption(self::OPTION_FROM_DATABASE, self::OPTION_FROM_DATABASE_SHORT, InputOption::VALUE_NONE, "Generate entities from a database", null)
+            ->addOption(self::OPTION_FROM_SCHEMA, self::OPTION_FROM_SCHEMA_SHORT, InputOption::VALUE_NONE, "Generate entities from a LightQL database schema", null)
+            ->addOption(self::OPTION_PERSISTENCE_UNIT, self::OPTION_PERSISTENCE_UNIT_SHORT, InputOption::VALUE_OPTIONAL, "The path to the LightQL persistence unit file.")
             ->addOption(self::OPTION_OUTPUT_DIR, self::OPTION_OUTPUT_DIR_SHORT, InputOption::VALUE_OPTIONAL, "The path to the directory in which generated files will output.", ".")
-            ->addOption(self::OPTION_NAMESPACE, null, InputOption::VALUE_OPTIONAL, "The namespace of entity classes.");
+            ->addOption(self::OPTION_NAMESPACE, null, InputOption::VALUE_OPTIONAL, "The namespace of entity classes.", false);
     }
 
     public function execute(InputInterface $input, OutputInterface $output)
+    {
+        if ($input->getOption(self::OPTION_FROM_DATABASE) !== false && $input->getOption(self::OPTION_FROM_SCHEMA) !== false)
+            throw new InvalidOptionException("You have to choose to generate entities either from a database or from a schema.");
+        elseif ($input->getOption(self::OPTION_FROM_DATABASE) !== false || ($input->getOption(self::OPTION_FROM_DATABASE) === false && $input->getOption(self::OPTION_FROM_SCHEMA) === false))
+            $this->_generateFromDatabase($input, $output);
+        elseif ($input->getOption(self::OPTION_FROM_SCHEMA) !== false)
+            $this->_generateFromSchema($input, $output);
+        else throw new InvalidOptionException("You have to choose to generate entities either from a database or from a schema.");
+    }
+
+    public function _generateFromDatabase(InputInterface &$input, OutputInterface &$output)
     {
         // Register the defined persistence unit
         PersistenceUnit::register(self::OPTION_PERSISTENCE_UNIT_SHORT, $input->getOption(self::OPTION_PERSISTENCE_UNIT));
@@ -116,6 +138,11 @@ class GenerateEntitiesCommand extends Command
         $output->writeln("Successfully generated <comment>{$i}</comment> entities from <comment>{$i}</comment> tables\n");
     }
 
+    public function _generateFromSchema(InputInterface &$input, OutputInterface &$output)
+    {
+
+    }
+
     private function _generateEntity(string $name, InputInterface $input, OutputInterface $output)
     {
         // Create file
@@ -126,7 +153,13 @@ class GenerateEntitiesCommand extends Command
 
         $class = null;
         $namespace = null;
+        $properties = array();
         $className = $this->_generateObjectName($name);
+
+        $pkFile = null;
+        $pkClass = null;
+        $pKeys = array();
+        $pkClassName = $className . "PK";
 
         if ($input->getOption(self::OPTION_NAMESPACE) !== false) {
             $namespace = $file->addNamespace($input->getOption(self::OPTION_NAMESPACE));
@@ -185,20 +218,20 @@ class GenerateEntitiesCommand extends Command
                     )
                 );
 
-            $property = $class->addProperty($propertyName);
+            $properties[$propertyName] = new \Nette\PhpGenerator\Property($propertyName);
 
             $isForeignKey = count($keys_results) > 0;
 
             foreach ($keys_results as $keys_result) {
                 if (strtolower($keys_result["CONSTRAINT_TYPE"]) === "primary key") {
-                    $class->addComment("@namedQuery('findById', 'SELECT * FROM {$name} WHERE {$name}.{$colName} = :id')");
-                    $property->addComment("@id");
+                    $properties[$propertyName]->addComment("@id");
+                    $pKeys[] = array($properties[$propertyName], $colName);
                     $isForeignKey = false;
                 }
 
                 if (strtolower($keys_result["CONSTRAINT_TYPE"]) === "unique") {
                     $class->addComment("@namedQuery('findBy{$propertyName}', 'SELECT * FROM {$name} WHERE {$name}.{$colName} = :{$propertyName}')");
-                    $property->addComment("@unique");
+                    $properties[$propertyName]->addComment("@unique");
                     $isForeignKey = false;
                 }
 
@@ -210,38 +243,69 @@ class GenerateEntitiesCommand extends Command
                         $namespace->addUse($input->getOption(self::OPTION_NAMESPACE) . "\\{$referencedEntity}");
                     }
 
-                    $property->addComment("@oneToMany('{$referencedEntity}', '{$referencedColumn}')");
+                    $properties[$propertyName]->addComment("@oneToMany('{$referencedEntity}', '{$referencedColumn}')");
                     $isForeignKey = true;
                 }
             }
 
             if ($colDefault !== null) {
-                $property->addComment("@column('{$colName}', '{$colType}', '{$colDefault}')");
+                $properties[$propertyName]->addComment("@column('{$colName}', '{$colType}', '{$colDefault}')");
             } else {
-                $property->addComment("@column('{$colName}', '{$colType}')");
+                $properties[$propertyName]->addComment("@column('{$colName}', '{$colType}')");
             }
 
             if (!$isForeignKey) {
                 if (strtolower($result["EXTRA"]) === "auto_increment") {
-                    $property->addComment("@autoIncrement");
+                    $properties[$propertyName]->addComment("@autoIncrement");
                 }
 
                 if (strtolower($result["IS_NULLABLE"]) === "no") {
-                    $property->addComment("@notNull");
+                    $properties[$propertyName]->addComment("@notNull");
                 }
 
                 if ($result["CHARACTER_MAXIMUM_LENGTH"] !== null) {
-                    $property->addComment("@size({$result['CHARACTER_MAXIMUM_LENGTH']})");
+                    $properties[$propertyName]->addComment("@size({$result['CHARACTER_MAXIMUM_LENGTH']})");
                 }
             }
         }
 
+        if (count($pKeys) > 1) {
+            $pkFile = (new \Nette\PhpGenerator\PhpFile)
+                ->addComment("THIS FILE IS GENERATED BY LIGHTQL\n")
+                ->addComment("LightQL entity primary key for the table \"{$name}\"\n")
+                ->addComment("Generated at " . date("Y-m-d H:i:s"));
+
+            if ($namespace !== null) {
+                $pkNamespace = $pkFile->addNamespace($input->getOption(self::OPTION_NAMESPACE));
+                $pkNamespace->addUse(IPrimaryKey::class);
+                $pkClass = $pkNamespace->addClass($pkClassName);
+            } else {
+                $pkFile->addUse(IPrimaryKey::class);
+                $pkClass = $pkFile->addClass($pkClassName);
+            }
+
+            $pkClass->addImplement(IPrimaryKey::class);
+
+            foreach ($pKeys as $key) {
+                $pkClass->addMember($key[0]);
+            }
+
+            $class->addProperty($pkClassName)->addComment("@id");
+        } else {
+            $class->addComment("@namedQuery('findById', 'SELECT * FROM {$name} WHERE {$name}.{$pKeys[0][1]} = :id')");
+        }
+
         $printer = new EntityFilePrinter;
-        $out = $printer->printFile($file);
 
-        file_put_contents($input->getOption(self::OPTION_OUTPUT_DIR) . DIRECTORY_SEPARATOR . "{$className}.php", $out);
-
+        $outClass = $printer->printFile($file);
+        file_put_contents($input->getOption(self::OPTION_OUTPUT_DIR) . DIRECTORY_SEPARATOR . "{$className}.php", $outClass);
         $output->writeln("  - <info>Entity <comment>{$className}</comment> generated from table <comment>{$name}</comment></info>");
+
+        if ($pkClass !== null) {
+            $outClass = $printer->printFile($pkFile);
+            file_put_contents($input->getOption(self::OPTION_OUTPUT_DIR) . DIRECTORY_SEPARATOR . "{$pkClassName}.php", $outClass);
+            $output->writeln("    - <info>Primary Key Class <comment>{$pkClassName}</comment> generated from table <comment>{$name}</comment></info>");
+        }
     }
 
     private function _generateObjectName(string $name): string
