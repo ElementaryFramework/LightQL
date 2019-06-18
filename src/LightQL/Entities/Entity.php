@@ -153,6 +153,9 @@ abstract class Entity implements IEntity
                 } elseif (\is_null($this->{$property}) || $this->{$property} === null) {
                     $this->{$property} = $column->getDefault();
                 }
+            } elseif (array_key_exists($column->getName(), $this->raw)) {
+                // TODO: Find a way to fill the property with the good value
+                $this->{$property} = null;
             }
         }
     }
@@ -185,7 +188,7 @@ abstract class Entity implements IEntity
                         $referencedColumn = $this->_getMetadata($property, "@oneToOne", "referencedColumn");
                         return $this->{$property}->get($referencedColumn);
                     }
-                } elseif ($this->{$property} !== null) {
+                } elseif (!$c->isManyToOne && $this->{$property} !== null) {
                     return $this->{$property};
                 }
             }

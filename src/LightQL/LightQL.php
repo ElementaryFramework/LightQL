@@ -1013,6 +1013,18 @@ class LightQL
     }
 
     /**
+     * Checks if we are currently inside a transaction.
+     *
+     * @uses \PDO::inTransaction()
+     *
+     * @return bool
+     */
+    public function inTransaction(): bool
+    {
+        return $this->_pdo->inTransaction();
+    }
+
+    /**
      * Disable auto commit mode and start a transaction.
      *
      * @uses \PDO::beginTransaction()
