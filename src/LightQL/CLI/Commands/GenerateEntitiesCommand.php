@@ -73,9 +73,12 @@ class GenerateEntitiesCommand extends Command
      */
     private $_pu;
 
+    private $_properties;
+
     public function __construct()
     {
         parent::__construct("generate:entities");
+        $this->_properties = array();
     }
 
     public function configure()
@@ -153,7 +156,6 @@ class GenerateEntitiesCommand extends Command
 
         $class = null;
         $namespace = null;
-        $properties = array();
         $className = $this->_generateObjectName($name);
 
         $pkFile = null;
@@ -169,6 +171,9 @@ class GenerateEntitiesCommand extends Command
             $file->addUse(Entity::class);
             $class = $file->addClass($className);
         }
+
+        if (!array_key_exists($className, $this->_properties))
+            $this->_properties[$className] = array();
 
         $class
             ->setExtends(Entity::class)
@@ -218,53 +223,73 @@ class GenerateEntitiesCommand extends Command
                     )
                 );
 
-            $properties[$propertyName] = new \Nette\PhpGenerator\Property($propertyName);
+            if (!array_key_exists($propertyName, $this->_properties[$className]))
+                $this->_properties[$className][$propertyName] = new \Nette\PhpGenerator\Property($propertyName);
 
             $isForeignKey = count($keys_results) > 0;
+            $isPrimaryKey = false;
 
             foreach ($keys_results as $keys_result) {
                 if (strtolower($keys_result["CONSTRAINT_TYPE"]) === "primary key") {
-                    $properties[$propertyName]->addComment("@id");
-                    $pKeys[] = array($properties[$propertyName], $colName);
+                    $this->_properties[$className][$propertyName]->addComment("@id");
+                    $pKeys[] = array($this->_properties[$className][$propertyName], $colName);
                     $isForeignKey = false;
+                    $isPrimaryKey = true;
                 }
 
                 if (strtolower($keys_result["CONSTRAINT_TYPE"]) === "unique") {
                     $class->addComment("@namedQuery('findBy{$propertyName}', 'SELECT * FROM {$name} WHERE {$name}.{$colName} = :{$propertyName}')");
-                    $properties[$propertyName]->addComment("@unique");
+                    $this->_properties[$className][$propertyName]->addComment("@unique");
                     $isForeignKey = false;
                 }
 
                 if (strtolower($keys_result["CONSTRAINT_TYPE"]) === "foreign key") {
                     $referencedEntity = $this->_generateObjectName($keys_result["REFERENCED_TABLE_NAME"]);
                     $referencedColumn = $keys_result["REFERENCED_COLUMN_NAME"];
+                    $referencedProperty = "{$className}Collection";
 
                     if ($namespace !== null) {
                         $namespace->addUse($input->getOption(self::OPTION_NAMESPACE) . "\\{$referencedEntity}");
                     }
 
-                    $properties[$propertyName]->addComment("@oneToMany('{$referencedEntity}', '{$referencedColumn}')");
+                    if ($isPrimaryKey) {
+                        $this->_properties["{$propertyName}Reference"] = new \Nette\PhpGenerator\Property($propertyName);
+                        $this->_properties["{$propertyName}Reference"]->addComment("@oneToMany('{$referencedEntity}', '{$referencedColumn}')");
+                        $this->_properties["{$propertyName}Reference"]->addComment("@column('{$colName}', '{$colType}')");
+                    } else {
+                        $this->_properties[$className][$propertyName]->addComment("@oneToMany('{$referencedEntity}', '{$referencedColumn}')");
+                    }
+
+                    if (!array_key_exists($referencedEntity, $this->_properties))
+                        $this->_properties[$referencedEntity] = array();
+
+                    if (!array_key_exists($referencedProperty, $this->_properties[$referencedEntity]))
+                        $this->_properties[$referencedEntity][$referencedProperty] = new \Nette\PhpGenerator\Property($referencedProperty);
+
+                    $this->_properties[$referencedEntity][$referencedProperty]->addComment("@manyToOne('{$className}', '${colName}')");
+                    $this->_properties[$referencedEntity][$referencedProperty]->addComment("@column('{$referencedColumn}')");
+
                     $isForeignKey = true;
                 }
             }
 
             if ($colDefault !== null) {
-                $properties[$propertyName]->addComment("@column('{$colName}', '{$colType}', '{$colDefault}')");
+                $this->_properties[$className][$propertyName]->addComment("@column('{$colName}', '{$colType}', '{$colDefault}')");
             } else {
-                $properties[$propertyName]->addComment("@column('{$colName}', '{$colType}')");
+                $this->_properties[$className][$propertyName]->addComment("@column('{$colName}', '{$colType}')");
             }
 
             if (!$isForeignKey) {
                 if (strtolower($result["EXTRA"]) === "auto_increment") {
-                    $properties[$propertyName]->addComment("@autoIncrement");
+                    $this->_properties[$className][$propertyName]->addComment("@autoIncrement");
                 }
 
                 if (strtolower($result["IS_NULLABLE"]) === "no") {
-                    $properties[$propertyName]->addComment("@notNull");
+                    $this->_properties[$className][$propertyName]->addComment("@notNull");
                 }
 
                 if ($result["CHARACTER_MAXIMUM_LENGTH"] !== null) {
-                    $properties[$propertyName]->addComment("@size({$result['CHARACTER_MAXIMUM_LENGTH']})");
+                    $this->_properties[$className][$propertyName]->addComment("@size({$result['CHARACTER_MAXIMUM_LENGTH']})");
                 }
             }
         }
@@ -295,6 +320,9 @@ class GenerateEntitiesCommand extends Command
             $class->addComment("@namedQuery('findById', 'SELECT * FROM {$name} WHERE {$name}.{$pKeys[0][1]} = :id')");
         }
 
+        foreach ($this->_properties[$className] as $_ => $property)
+            $class->addMember($property);
+
         $printer = new EntityFilePrinter;
 
         $outClass = $printer->printFile($file);
@@ -312,7 +340,7 @@ class GenerateEntitiesCommand extends Command
     {
         return implode("", array_map(function ($item) {
             return ucfirst(trim($item));
-        }, preg_split("/[.-_]/", $name)));
+        }, preg_split("/[_-]/", $name)));
     }
 
 }
