@@ -53,6 +53,13 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 final class EntityManager
 {
     /**
+     * The array of existing LightQL connections.
+     *
+     * @var array
+     */
+    private static $_connections = array();
+
+    /**
      * The persistence unit of this entity
      * manager.
      *
@@ -80,17 +87,23 @@ final class EntityManager
         // Save the persistence unit
         $this->_persistenceUnit = $persistenceUnit;
 
-        // Create a LightQL instance
-        $this->_lightql = new LightQL(
-            array(
-                "dbms" => $this->_persistenceUnit->getDbms(),
-                "database" => $this->_persistenceUnit->getDatabase(),
-                "hostname" => $this->_persistenceUnit->getHostname(),
-                "username" => $this->_persistenceUnit->getUsername(),
-                "password" => $this->_persistenceUnit->getPassword(),
-                "port" => $this->_persistenceUnit->getPort()
-            )
-        );
+        if (!array_key_exists($persistenceUnit->getKey(), static::$_connections)) {
+            // Create a LightQL instance
+            $this->_lightql = new LightQL(
+                array(
+                    "dbms" => $this->_persistenceUnit->getDbms(),
+                    "database" => $this->_persistenceUnit->getDatabase(),
+                    "hostname" => $this->_persistenceUnit->getHostname(),
+                    "username" => $this->_persistenceUnit->getUsername(),
+                    "password" => $this->_persistenceUnit->getPassword(),
+                    "port" => $this->_persistenceUnit->getPort()
+                )
+            );
+
+            static::$_connections[$persistenceUnit->getKey()] = $this->_lightql;
+        } else {
+            $this->_lightql = static::$_connections[$persistenceUnit->getKey()];
+        }
     }
 
     /**
@@ -148,6 +161,8 @@ final class EntityManager
      * Persists an entity into the database.
      *
      * @param Entity &$entity The entity to create.
+     *
+     * @return array
      *
      * @throws EntityException
      * @throws ValueValidatorException
@@ -223,22 +238,12 @@ final class EntityManager
             }
         }
 
-        if (Annotations::classHasAnnotation($entity, "@pkClass")) {
-            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
-            $pkClassReflection = new \ReflectionClass($pkClassName);
-            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
-
-            /** @var \ReflectionProperty $property */
-            foreach ($pkClassProperties as $property) {
-                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
-                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
-                    $fieldAndValues[$columnAnnotations[0]->name] = $entity->{$idProperty}->{$property->name};
-                }
-            }
-        }
-
         /** @var Column $column */
         foreach ($columns as $property => $column) {
+            if ($column->isManyToOne) {
+                continue;
+            }
+
             $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
@@ -252,22 +257,65 @@ final class EntityManager
             $fieldAndValues[$column->getName()] = $value;
         }
 
-        $this->_lightql->beginTransaction();
+        if (Annotations::classHasAnnotation($entity, "@pkClass")) {
+            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
+            $pkClassReflection = new \ReflectionClass($pkClassName);
+            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($pkClassProperties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
+                    $fieldAndValues[$columnAnnotations[0]->name] = $this->_lightql->parseValue($entity->{$idProperty}->{$property->name});
+                }
+            }
+        }
+
+        $inTransaction = $this->_lightql->inTransaction();
+
+        if (!$inTransaction) {
+            $this->_lightql->beginTransaction();
+        }
+
         try {
             $this->_lightql
                 ->from($entityAnnotation[0]->table)
                 ->insert($fieldAndValues);
 
-            if ($autoIncrementProperty !== null) {
-                $entity->{$autoIncrementProperty} = $this->_lightql->lastInsertID();
+            if (!$inTransaction) {
+                $this->_lightql->commit();
+            }
+        } catch (\Exception $e) {
+            if (!$inTransaction) {
+                $this->_lightql->rollback();
             }
 
-            $this->_lightql->commit();
-        } catch (\Exception $e) {
-            $this->_lightql->rollback();
-
-            throw new EntityException($e->getMessage());
+            throw new EntityException("Unable to persist the entity. See internal exception to learn more.", 0, $e);
         }
+
+        $where = array();
+        if ($autoIncrementProperty !== null) {
+            $where[$columns[$autoIncrementProperty]->getName()] = $this->_lightql->lastInsertID();
+        } elseif ($entity->{$idProperty} instanceof IPrimaryKey) {
+            $pkClassName = Annotations::ofClass($entity, "@pkClass")[0]->name;
+            $pkClassReflection = new \ReflectionClass($pkClassName);
+            $pkClassProperties = $pkClassReflection->getProperties(T_PUBLIC);
+
+            /** @var \ReflectionProperty $property */
+            foreach ($pkClassProperties as $property) {
+                if (Annotations::propertyHasAnnotation($pkClassName, $property->name, "@column")) {
+                    $columnAnnotations = Annotations::ofProperty($pkClassName, $property->name, "@column");
+                    $where[$columnAnnotations[0]->name] = $this->_lightql->parseValue($entity->{$idProperty}->{$property->name});
+                }
+            }
+        } else {
+            $where[$columns[$idProperty]->getName()] = $this->_lightql->parseValue($entity->{$idProperty});
+        }
+
+        return $this->_lightql
+            ->from($entityAnnotation[0]->table)
+            ->where($where)
+            ->selectFirst();
     }
 
     /**
@@ -312,6 +360,10 @@ final class EntityManager
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
+            if ($column->isManyToOne) {
+                continue;
+            }
+
             $value = $this->_lightql->parseValue($entity->get($column->getName()));
 
             if ($valueValidator !== null && !$valueValidator->validate($entity, $property)) {
@@ -329,16 +381,25 @@ final class EntityManager
             }
         }
 
-        $this->_lightql->beginTransaction();
+        $inTransaction = $this->_lightql->inTransaction();
+
+        if (!$inTransaction) {
+            $this->_lightql->beginTransaction();
+        }
+
         try {
             $this->_lightql
                 ->from($entityAnnotation[0]->table)
                 ->where($where)
                 ->update($fieldAndValues);
 
-            $this->_lightql->commit();
+            if (!$inTransaction) {
+                $this->_lightql->commit();
+            }
         } catch (\Exception $e) {
-            $this->_lightql->rollback();
+            if (!$inTransaction) {
+                $this->_lightql->rollback();
+            }
 
             throw new EntityException($e->getMessage());
         }
@@ -389,7 +450,12 @@ final class EntityManager
             }
         }
 
-        $this->_lightql->beginTransaction();
+        $inTransaction = $this->_lightql->inTransaction();
+
+        if (!$inTransaction) {
+            $this->_lightql->beginTransaction();
+        }
+
         try {
             $this->_lightql
                 ->from($entityAnnotation[0]->table)
@@ -402,9 +468,13 @@ final class EntityManager
                 }
             }
 
-            $this->_lightql->commit();
+            if (!$inTransaction) {
+                $this->_lightql->commit();
+            }
         } catch (\Exception $e) {
-            $this->_lightql->rollback();
+            if (!$inTransaction) {
+                $this->_lightql->rollback();
+            }
 
             throw new EntityException($e->getMessage());
         }

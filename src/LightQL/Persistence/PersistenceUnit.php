@@ -47,6 +47,13 @@ use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
 class PersistenceUnit
 {
     /**
+     * The key used to create this persistence unit.
+     *
+     * @var string
+     */
+    private $_key;
+
+    /**
      * The DBMS.
      *
      * @var string
@@ -130,6 +137,8 @@ class PersistenceUnit
     private function __construct(string $key)
     {
         if (array_key_exists($key, self::$_registry)) {
+            $this->_key = $key;
+
             $filepath = self::$_registry[$key];
 
             if (!file_exists($filepath)) {
@@ -225,6 +234,16 @@ class PersistenceUnit
         } else {
             return (self::$_units[$key] = new self($key));
         }
+    }
+
+    /**
+     * Returns the persistence unit key.
+     *
+     * @return string
+     */
+    public function getKey(): string
+    {
+        return $this->_key;
     }
 
     /**

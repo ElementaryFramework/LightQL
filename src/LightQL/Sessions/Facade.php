@@ -129,6 +129,7 @@ abstract class Facade implements IFacade
      * @throws AnnotationException
      * @throws FacadeException When the facade is unable to create the entity.
      * @throws OperationCancelledException When the operation has been cancelled by a listener
+     * @throws EntityException When the $entity object is not an instance of Entity class
      */
     public function create(IEntity &$entity)
     {
@@ -145,20 +146,10 @@ abstract class Facade implements IFacade
         }
 
         try {
-            $this->entityManager->persist($entity);
-
-            $columns = $entity->getColumns();
-            foreach ($columns as $property => $column) {
-                if ($column->isOneToMany) {
-                    $this->_fetchOneToMany($entity, $property);
-                } elseif ($column->isManyToOne) {
-                    $this->_fetchManyToOne($entity, $property);
-                } elseif ($column->isManyToMany) {
-                    $this->_fetchManyToMany($entity, $property);
-                } elseif ($column->isOneToOne) {
-                    $this->_fetchOneToOne($entity, $property);
-                }
-            }
+            $entity = $this->_parseRawEntity(
+                $this->entityManager->persist($entity),
+                Annotations::ofClass($this->getEntityClassName(), "@entity")
+            );
 
             $this->_listener instanceof IFacadeListener && $this->_listener->onCreate($entity);
         } catch (\Exception $e) {
