@@ -608,28 +608,6 @@ abstract class Facade implements IFacade
         if ($rawEntity === null)
             return null;
 
-        /** @var IValueTransformer $valueTransformer */
-        $valueTransformer = null;
-
-        if (Annotations::classHasAnnotation($this->getEntityClassName(), "@transformer")) {
-            $transformerAnnotation = Annotations::ofClass($this->getEntityClassName(), "@transformer");
-
-            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
-                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
-
-                $valueTransformer = $transformerClass->newInstance();
-            } else {
-                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
-            }
-        }
-
-        if ($valueTransformer !== null) {
-            foreach ($rawEntity as $column => &$value) {
-                $value = $valueTransformer->toEntityValue($annotations[0]->table, $column, $value);
-            }
-            unset($value);
-        }
-
         /** @var IPrimaryKey $pkClass */
         $pkClassReflection = null;
         $pkClass = null;
