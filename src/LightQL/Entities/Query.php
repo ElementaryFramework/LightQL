@@ -32,7 +32,9 @@
 
 namespace ElementaryFramework\LightQL\Entities;
 
+use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\LightQL\Exceptions\QueryException;
+use ElementaryFramework\LightQL\Sessions\Facade;
 
 /**
  * Query
@@ -47,18 +49,11 @@ use ElementaryFramework\LightQL\Exceptions\QueryException;
 class Query
 {
     /**
-     * The entity manager running this query.
+     * The facade running this query.
      *
-     * @var EntityManager
+     * @var Facade
      */
-    private $_entityManager;
-
-    /**
-     * The reflection class of the managed entity.
-     *
-     * @var \ReflectionClass
-     */
-    private $_entityReflection;
+    private $_facade;
 
     /**
      * The named query string.
@@ -84,21 +79,11 @@ class Query
     /**
      * Query constructor.
      *
-     * @param EntityManager $manager
+     * @param Facade $facade
      */
-    public function __construct(EntityManager $manager)
+    public function __construct(Facade $facade)
     {
-        $this->_entityManager = $manager;
-    }
-
-    /**
-     * Sets the reflection class of the managed entity.
-     *
-     * @param \ReflectionClass $entity The managed entity reflection class instance.
-     */
-    public function setEntity(\ReflectionClass $entity)
-    {
-        $this->_entityReflection = $entity;
+        $this->_facade = $facade;
     }
 
     /**
@@ -130,7 +115,10 @@ class Query
     public function run(): bool
     {
         try {
-            $this->_query = $this->_entityManager->getLightQL()->prepare($this->_namedQuery);
+            $this->_query = $this->_facade
+                ->getEntityManager()
+                ->getLightQL()
+                ->prepare($this->_namedQuery);
 
             foreach ($this->_parameters as $name => $value) {
                 $this->_query->bindValue($name, $value);
@@ -153,9 +141,13 @@ class Query
             throw new QueryException("Cannot get results, have you ran the query?");
         }
 
-        $results = array_map(function ($item) {
-            return $this->_entityReflection->newInstance($item);
-        }, $this->_query->fetchAll());
+        $className = $this->_facade->getEntityClassName();
+
+        $results = $this->_facade->_parseRawEntities(
+            $this->_query->fetchAll(),
+            $className,
+            Annotations::ofClass($className, "@entity")
+        );
 
         return $results;
     }

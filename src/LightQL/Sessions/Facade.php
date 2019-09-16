@@ -359,8 +359,7 @@ abstract class Facade implements IFacade
             throw new FacadeException("The {$this->_class->name} has no @namedQuery annotation with the name {$name}.");
         }
 
-        $q = new Query($this->entityManager);
-        $q->setEntity($this->_class);
+        $q = new Query($this);
         $q->setQuery($query);
 
         return $q;
@@ -419,8 +418,6 @@ abstract class Facade implements IFacade
                     )
                 )
             );
-
-        $className = $manyToMany[0]->entity;
 
         $entity->{$property} = $this->_parseRawEntities(
             $results,
@@ -586,8 +583,10 @@ abstract class Facade implements IFacade
      * @throws EntityException
      * @throws LightQLException
      * @throws \ReflectionException
+     *
+     * @internal This method is intended to be used only internally by LightQL itself.
      */
-    private function _parseRawEntities($rawEntities, $className, $annotations): array
+    public function _parseRawEntities($rawEntities, $className, $annotations): array
     {
         $entities = array();
 
@@ -621,8 +620,8 @@ abstract class Facade implements IFacade
         $pkClassReflection = null;
         $pkClass = null;
 
-        if (Annotations::classHasAnnotation($this->getEntityClassName(), "@pkClass")) {
-            $pkClassAnnotation = Annotations::ofClass($this->getEntityClassName(), "@pkClass");
+        if (Annotations::classHasAnnotation($className, "@pkClass")) {
+            $pkClassAnnotation = Annotations::ofClass($className, "@pkClass");
 
             if (\is_subclass_of($pkClassAnnotation[0]->name, IPrimaryKey::class)) {
                 $pkClassReflection = new \ReflectionClass($pkClassAnnotation[0]->name);
