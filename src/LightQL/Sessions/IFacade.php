@@ -32,6 +32,7 @@
 
 namespace ElementaryFramework\LightQL\Sessions;
 
+use ElementaryFramework\LightQL\Entities\EntitiesCollection;
 use ElementaryFramework\LightQL\Entities\IEntity;
 
 /**
@@ -79,9 +80,9 @@ interface IFacade
     /**
      * Find all entities.
      *
-     * @return IEntity[]
+     * @return EntitiesCollection
      */
-    function findAll(): array;
+    function findAll(): EntitiesCollection;
 
     /**
      * Find all entities in the given range.
@@ -89,9 +90,9 @@ interface IFacade
      * @param int $start  The starting offset.
      * @param int $length The number of entities to find.
      *
-     * @return IEntity[]
+     * @return EntitiesCollection
      */
-    function findRange(int $start, int $length): array;
+    function findRange(int $start, int $length): EntitiesCollection;
 
     /**
      * Count the number of entities.

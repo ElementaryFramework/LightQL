@@ -36,6 +36,7 @@ use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\Annotations\Exceptions\AnnotationException;
 use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
 use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
+use ElementaryFramework\LightQL\Entities\EntitiesCollection;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
@@ -252,7 +253,7 @@ abstract class Facade implements IFacade
      * @throws LightQLException
      * @throws \ReflectionException
      */
-    public function findAll(): array
+    public function findAll(): EntitiesCollection
     {
         $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
 
@@ -261,7 +262,13 @@ abstract class Facade implements IFacade
             ->from($annotations[0]->table)
             ->selectArray();
 
-        return $this->_parseRawEntities($rawEntities, $this->getEntityClassName(), $annotations);
+        return new EntitiesCollection(
+            $this->_parseRawEntities(
+                $rawEntities,
+                $this->getEntityClassName(),
+                $annotations
+            )
+        );
     }
 
     /**
@@ -277,7 +284,7 @@ abstract class Facade implements IFacade
      * @throws LightQLException
      * @throws \ReflectionException
      */
-    public function findRange(int $start, int $length): array
+    public function findRange(int $start, int $length): EntitiesCollection
     {
         $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
 
@@ -287,7 +294,13 @@ abstract class Facade implements IFacade
             ->limit($start, $length)
             ->selectArray();
 
-        return $this->_parseRawEntities($rawEntities, $this->getEntityClassName(), $annotations);
+        return new EntitiesCollection(
+            $this->_parseRawEntities(
+                $rawEntities,
+                $this->getEntityClassName(),
+                $annotations
+            )
+        );
     }
 
     /**

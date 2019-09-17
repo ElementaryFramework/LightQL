@@ -133,9 +133,9 @@ class Query
     /**
      * Returns the set of results after the execution of the query.
      *
-     * @return Entity[]
+     * @return EntitiesCollection
      */
-    public function getResults(): array
+    public function getResults(): EntitiesCollection
     {
         if ($this->_query === null) {
             throw new QueryException("Cannot get results, have you ran the query?");
@@ -149,7 +149,7 @@ class Query
             Annotations::ofClass($className, "@entity")
         );
 
-        return $results;
+        return new EntitiesCollection($results);
     }
 
     /**
