@@ -360,7 +360,7 @@ class LightQL
             $stack[] = is_int($key) ? $value : "{$key}={$value}";
         }
 
-        $this->_dsn = $this->_driver . ":" . implode(';', $stack);
+        $this->_dsn = $this->_driver . ":" . implode(";", $stack);
 
         if (in_array($this->_dbms, ['mariadb', 'mysql', 'pgsql', 'sybase', 'mssql']) && isset($options['charset'])) {
             $commands[] = "SET NAMES '{$options['charset']}'";
@@ -496,7 +496,7 @@ class LightQL
      */
     public function limit(int $offset, int $count): LightQL
     {
-        $this->_limit = " LIMIT {$offset}, {$count} ";
+        $this->_limit = " LIMIT {$count} OFFSET {$offset}";
         return $this;
     }
 

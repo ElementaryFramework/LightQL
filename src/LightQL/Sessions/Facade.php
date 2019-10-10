@@ -36,6 +36,7 @@ use ElementaryFramework\Annotations\Annotations;
 use ElementaryFramework\Annotations\Exceptions\AnnotationException;
 use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
 use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
+use ElementaryFramework\LightQL\Entities\EntitiesCollection;
 use ElementaryFramework\LightQL\Entities\Entity;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
@@ -148,6 +149,7 @@ abstract class Facade implements IFacade
         try {
             $entity = $this->_parseRawEntity(
                 $this->entityManager->persist($entity),
+                $this->getEntityClassName(),
                 Annotations::ofClass($this->getEntityClassName(), "@entity")
             );
 
@@ -234,11 +236,10 @@ abstract class Facade implements IFacade
      */
     public function find($id): ?IEntity
     {
-        $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
-
         return $this->_parseRawEntity(
             $this->entityManager->find($this->getEntityClassName(), $id),
-            $annotations
+            $this->getEntityClassName(),
+            Annotations::ofClass($this->getEntityClassName(), "@entity")
         );
     }
 
@@ -252,7 +253,7 @@ abstract class Facade implements IFacade
      * @throws LightQLException
      * @throws \ReflectionException
      */
-    public function findAll(): array
+    public function findAll(): EntitiesCollection
     {
         $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
 
@@ -261,7 +262,13 @@ abstract class Facade implements IFacade
             ->from($annotations[0]->table)
             ->selectArray();
 
-        return $this->_parseRawEntities($rawEntities, $annotations);
+        return new EntitiesCollection(
+            $this->_parseRawEntities(
+                $rawEntities,
+                $this->getEntityClassName(),
+                $annotations
+            )
+        );
     }
 
     /**
@@ -277,7 +284,7 @@ abstract class Facade implements IFacade
      * @throws LightQLException
      * @throws \ReflectionException
      */
-    public function findRange(int $start, int $length): array
+    public function findRange(int $start, int $length): EntitiesCollection
     {
         $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
 
@@ -287,7 +294,13 @@ abstract class Facade implements IFacade
             ->limit($start, $length)
             ->selectArray();
 
-        return $this->_parseRawEntities($rawEntities, $annotations);
+        return new EntitiesCollection(
+            $this->_parseRawEntities(
+                $rawEntities,
+                $this->getEntityClassName(),
+                $annotations
+            )
+        );
     }
 
     /**
@@ -359,8 +372,7 @@ abstract class Facade implements IFacade
             throw new FacadeException("The {$this->_class->name} has no @namedQuery annotation with the name {$name}.");
         }
 
-        $q = new Query($this->entityManager);
-        $q->setEntity($this->_class);
+        $q = new Query($this);
         $q->setQuery($query);
 
         return $q;
@@ -420,10 +432,11 @@ abstract class Facade implements IFacade
                 )
             );
 
-        $className = $manyToMany[0]->entity;
-        $entity->{$property} = array_map(function($item) use ($manyToMany, $className) {
-            return new $className($item);
-        }, $results);
+        $entity->{$property} = $this->_parseRawEntities(
+            $results,
+            $manyToMany[0]->entity,
+            $referencedEntityAnnotations
+        );
     }
 
     /**
@@ -460,7 +473,11 @@ abstract class Facade implements IFacade
         $entity->{$property} = $result;
 
         if ($result !== null) {
-            $entity->{$property} = new $className($result);
+            $entity->{$property} = $this->_parseRawEntity(
+                $result,
+                $oneToMany[0]->entity,
+                $referencedEntityAnnotations
+            );
         }
     }
 
@@ -493,8 +510,9 @@ abstract class Facade implements IFacade
             ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->parseValue($entity->get($column[0]->name))))
             ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
 
-        $entity->{$property} = array_map(function($item) use ($manyToOne, $entity, $mappedPropertyName) {
-            $className = $manyToOne[0]->entity;
+        $className = $manyToOne[0]->entity;
+
+        $entity->{$property} = array_map(function($item) use ($entity, $mappedPropertyName, $className) {
             $e = new $className($item);
             $e->{$mappedPropertyName} = &$entity;
             return $e;
@@ -535,8 +553,7 @@ abstract class Facade implements IFacade
         $entity->{$property} = $result;
 
         if ($result !== null) {
-            $entity->{$property} = new $className($result);
-            $entity->{$property}->{$mappedPropertyName} = &$entity;
+            $entity->{$property} = $this->_parseRawEntity($result, $className, $referencedEntityAnnotations);
         }
     }
 
@@ -570,6 +587,7 @@ abstract class Facade implements IFacade
      * Parse a set of raw data to a set of Entities.
      *
      * @param array $rawEntities The set of raw entities data provided fromm database.
+     * @param string $className The name of the entity class.
      * @param array $annotations The set of entity annotations.
      *
      * @return Entity[]
@@ -578,13 +596,15 @@ abstract class Facade implements IFacade
      * @throws EntityException
      * @throws LightQLException
      * @throws \ReflectionException
+     *
+     * @internal This method is intended to be used only internally by LightQL itself.
      */
-    private function _parseRawEntities($rawEntities, $annotations): array
+    public function _parseRawEntities($rawEntities, $className, $annotations): array
     {
         $entities = array();
 
         foreach ($rawEntities as $rawEntity) {
-            array_push($entities, $this->_parseRawEntity($rawEntity, $annotations));
+            array_push($entities, $this->_parseRawEntity($rawEntity, $className, $annotations));
         }
 
         return $entities;
@@ -594,6 +614,7 @@ abstract class Facade implements IFacade
      * Parses raw data to Entity.
      *
      * @param array|null $rawEntity Raw entity data provided from database.
+     * @param string $className The name of the entity class.
      * @param EntityAnnotation[] $annotations The set of entity annotations.
      *
      * @return Entity|null
@@ -603,39 +624,17 @@ abstract class Facade implements IFacade
      * @throws LightQLException
      * @throws \ReflectionException
      */
-    private function _parseRawEntity($rawEntity, $annotations): ?Entity
+    private function _parseRawEntity($rawEntity, $className, $annotations): ?Entity
     {
         if ($rawEntity === null)
             return null;
-
-        /** @var IValueTransformer $valueTransformer */
-        $valueTransformer = null;
-
-        if (Annotations::classHasAnnotation($this->getEntityClassName(), "@transformer")) {
-            $transformerAnnotation = Annotations::ofClass($this->getEntityClassName(), "@transformer");
-
-            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
-                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
-
-                $valueTransformer = $transformerClass->newInstance();
-            } else {
-                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
-            }
-        }
-
-        if ($valueTransformer !== null) {
-            foreach ($rawEntity as $column => &$value) {
-                $value = $valueTransformer->toEntityValue($annotations[0]->table, $column, $value);
-            }
-            unset($value);
-        }
 
         /** @var IPrimaryKey $pkClass */
         $pkClassReflection = null;
         $pkClass = null;
 
-        if (Annotations::classHasAnnotation($this->getEntityClassName(), "@pkClass")) {
-            $pkClassAnnotation = Annotations::ofClass($this->getEntityClassName(), "@pkClass");
+        if (Annotations::classHasAnnotation($className, "@pkClass")) {
+            $pkClassAnnotation = Annotations::ofClass($className, "@pkClass");
 
             if (\is_subclass_of($pkClassAnnotation[0]->name, IPrimaryKey::class)) {
                 $pkClassReflection = new \ReflectionClass($pkClassAnnotation[0]->name);
@@ -657,22 +656,24 @@ abstract class Facade implements IFacade
             }
         }
 
+        $reflection = new \ReflectionClass($className);
+
         /** @var Entity $entity */
-        $entity = $this->_class->newInstance($rawEntity);
+        $entity = $reflection->newInstance($rawEntity);
 
         if ($annotations[0]->fetchMode === Entity::FETCH_EAGER) {
-            $properties = $this->_class->getProperties(T_PUBLIC);
+            $properties = $reflection->getProperties(T_PUBLIC);
 
             foreach ($properties as $property) {
                 if (Annotations::propertyHasAnnotation($entity, $property->name, "@id") && $pkClass !== null) {
                     $entity->{$property->name} = $pkClass;
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany") && !is_array($property->getValue($entity))) {
                     $this->_fetchManyToMany($entity, $property->name);
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToMany")) {
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToMany") && !($property->getValue($entity) instanceof IEntity)) {
                     $this->_fetchOneToMany($entity, $property->name);
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToOne")) {
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToOne") && !is_array($property->getValue($entity))) {
                     $this->_fetchManyToOne($entity, $property->name);
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToOne")) {
+                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToOne") && !($property->getValue($entity) instanceof IEntity)) {
                     $this->_fetchOneToOne($entity, $property->name);
                 }
             }

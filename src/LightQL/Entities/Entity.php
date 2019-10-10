@@ -67,6 +67,20 @@ abstract class Entity implements IEntity
     protected $raw = array();
 
     /**
+     * The raw data with the value transformer applied.
+     *
+     * @var array
+     */
+    private $_polished = array();
+
+    /**
+     * The name of the table managed by the current entity.
+     *
+     * @var string
+     */
+    private $_table;
+
+    /**
      * The reflection class of this entity.
      *
      * @var \ReflectionClass
@@ -94,6 +108,8 @@ abstract class Entity implements IEntity
         if (!Annotations::classHasAnnotation($this, "@entity")) {
             throw new EntityException("Cannot create an entity without the @entity annotation.");
         }
+
+        $this->_table = Annotations::ofClass($this, "@entity")[0]->table;
 
         $this->_reflection = new \ReflectionClass($this);
         $properties = $this->_reflection->getProperties(T_PUBLIC);
@@ -139,9 +155,20 @@ abstract class Entity implements IEntity
      */
     public function hydrate(array $data)
     {
+        /** @var IValueTransformer $valueTransformer */
+        $valueTransformer = Entity::getValueTransformerOfEntity($this);
+
         // Merge values
         foreach ($data as $name => $value) {
+            // Save the raw value
             $this->raw[$name] = $value;
+
+            // Save the polished value
+            if (is_string($name)) {
+                $this->_polished[$name] = $valueTransformer !== null
+                    ? $valueTransformer->toEntityValue($this->_table, $name, $value)
+                    : $value;
+            }
         }
 
         // Populate @column properties
@@ -198,7 +225,7 @@ abstract class Entity implements IEntity
 
         // Try to get the raw value
         if ($this->_exists($column)) {
-            return $this->raw[$column];
+            return $this->_polished[$column];
         }
 
         // The value definitively doesn't exist
@@ -292,5 +319,53 @@ abstract class Entity implements IEntity
     private function _exists(string $column): bool
     {
         return array_key_exists($column, $this->raw);
+    }
+
+    /**
+     * @param $entity
+     * @return IValueValidator|null
+     * @throws AnnotationException
+     * @throws EntityException
+     * @throws \ReflectionException
+     */
+    public static function getValueValidatorOfEntity($entity)
+    {
+        if (Annotations::classHasAnnotation($entity, "@validator")) {
+            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
+
+            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
+                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
+
+                return $validatorClass->newInstance();
+            } else {
+                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param $entity
+     * @return IValueTransformer|null
+     * @throws AnnotationException
+     * @throws EntityException
+     * @throws \ReflectionException
+     */
+    public static function getValueTransformerOfEntity($entity)
+    {
+        if (Annotations::classHasAnnotation($entity, "@transformer")) {
+            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
+
+            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
+                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
+
+                return $transformerClass->newInstance();
+            } else {
+                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
+            }
+        }
+
+        return null;
     }
 }

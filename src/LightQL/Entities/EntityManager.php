@@ -178,8 +178,8 @@ final class EntityManager
 
         $autoIncrementProperty = null;
         $idProperty = null;
-        $valueValidator = $this->_getValueValidatorOfEntity($entity);
-        $valueTransformer = $this->_getValueTransformerOfEntity($entity);
+        $valueValidator = Entity::getValueValidatorOfEntity($entity);
+        $valueTransformer = Entity::getValueTransformerOfEntity($entity);
 
         /** @var Column $column */
         foreach ($columns as $property => $column) {
@@ -334,8 +334,8 @@ final class EntityManager
 
         $columns = $entity->getColumns();
         $fieldAndValues = array();
-        $valueValidator = $this->_getValueValidatorOfEntity($entity);
-        $valueTransformer = $this->_getValueTransformerOfEntity($entity);
+        $valueValidator = Entity::getValueValidatorOfEntity($entity);
+        $valueTransformer = Entity::getValueTransformerOfEntity($entity);
 
         $where = array();
 
@@ -489,53 +489,5 @@ final class EntityManager
     public function getLightQL(): LightQL
     {
         return $this->_lightql;
-    }
-
-    /**
-     * @param $entity
-     * @return IValueValidator
-     * @throws EntityException
-     * @throws AnnotationException
-     * @throws \ReflectionException
-     */
-    private function _getValueValidatorOfEntity($entity)
-    {
-        if (Annotations::classHasAnnotation($entity, "@validator")) {
-            $validatorAnnotation = Annotations::ofClass($entity, "@validator");
-
-            if (\is_subclass_of($validatorAnnotation[0]->validator, IValueValidator::class)) {
-                $validatorClass = new \ReflectionClass($validatorAnnotation[0]->validator);
-
-                return $validatorClass->newInstance();
-            } else {
-                throw new EntityException("The value validator of this entity doesn't implement the IValueValidator interface.");
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param $entity
-     * @return IValueTransformer
-     * @throws EntityException
-     * @throws AnnotationException
-     * @throws \ReflectionException
-     */
-    private function _getValueTransformerOfEntity($entity)
-    {
-        if (Annotations::classHasAnnotation($entity, "@transformer")) {
-            $transformerAnnotation = Annotations::ofClass($entity, "@transformer");
-
-            if (\is_subclass_of($transformerAnnotation[0]->transformer, IValueTransformer::class)) {
-                $transformerClass = new \ReflectionClass($transformerAnnotation[0]->transformer);
-
-                return $transformerClass->newInstance();
-            } else {
-                throw new EntityException("The value transformer of this entity doesn't implement the IValueTransformer interface.");
-            }
-        }
-
-        return null;
     }
 }
