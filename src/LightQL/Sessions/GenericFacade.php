@@ -32,6 +32,7 @@
 
 namespace ElementaryFramework\LightQL\Sessions;
 
+use ElementaryFramework\LightQL\Entities\EntitiesCollection;
 use ElementaryFramework\LightQL\Entities\GenericEntity;
 use ElementaryFramework\LightQL\Entities\IEntity;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
@@ -214,11 +215,11 @@ final class GenericFacade implements IFacade
      *
      * This method is unavailable. Use findGeneric instead.
      *
-     * @return IEntity[]
+     * @return EntitiesCollection
      *
      * @throws FacadeException
      */
-    public function findAll(): array
+    public function findAll(): EntitiesCollection
     {
         throw new FacadeException("The \"findAll\" method is unavailable in GenericFacade, use \"findAllGeneric\" instead.");
     }
@@ -229,19 +230,21 @@ final class GenericFacade implements IFacade
      * @param string $table The name of the table
      * @param string $pk The name of the column with primary key property
      *
-     * @return IEntity[]
+     * @return EntitiesCollection
      *
      * @throws LightQLException
      */
-    public function findAllGeneric(string $table, string $pk): array
+    public function findAllGeneric(string $table, string $pk): EntitiesCollection
     {
         $rawEntities = $this->_lightql
             ->from($table)
             ->selectArray();
 
-        return array_map(function ($raw) use ($table, $pk) {
-            return new GenericEntity($table, $pk, $raw);
-        }, $rawEntities);
+        return new EntitiesCollection(
+            array_map(function ($raw) use ($table, $pk) {
+                return new GenericEntity($table, $pk, $raw);
+            }, $rawEntities)
+        );
     }
 
     /**
@@ -252,11 +255,11 @@ final class GenericFacade implements IFacade
      * @param int $start The starting offset.
      * @param int $length The number of entities to find.
      *
-     * @return IEntity[]
+     * @return EntitiesCollection
      *
      * @throws FacadeException
      */
-    public function findRange(int $start, int $length): array
+    public function findRange(int $start, int $length): EntitiesCollection
     {
         throw new FacadeException("The \"findRange\" method is unavailable in GenericFacade, use \"findRangeGeneric\" instead.");
     }
@@ -269,20 +272,22 @@ final class GenericFacade implements IFacade
      * @param int $start The starting offset.
      * @param int $length The number of entities to find.
      *
-     * @return IEntity[]
+     * @return EntitiesCollection
      *
      * @throws LightQLException
      */
-    public function findRangeGeneric(string $table, string $pk, int $start, int $length): array
+    public function findRangeGeneric(string $table, string $pk, int $start, int $length): EntitiesCollection
     {
         $rawEntities = $this->_lightql
             ->from($table)
             ->limit($start, $length)
             ->selectArray();
 
-        return array_map(function ($raw) use ($table, $pk) {
-            return new GenericEntity($table, $pk, $raw);
-        }, $rawEntities);
+        return new EntitiesCollection(
+            array_map(function ($raw) use ($table, $pk) {
+                return new GenericEntity($table, $pk, $raw);
+            }, $rawEntities)
+        );
     }
 
     /**
