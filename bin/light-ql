@@ -45,8 +45,8 @@ if (!defined('COMPOSER_INSTALL')) {
     fwrite(
         STDERR,
         'You need to set up the project dependencies using Composer:' . PHP_EOL . PHP_EOL .
-        '    composer install' . PHP_EOL . PHP_EOL .
-        'You can learn all about Composer on https://getcomposer.org/.' . PHP_EOL
+            '    composer install' . PHP_EOL . PHP_EOL .
+            'You can learn all about Composer on https://getcomposer.org/.' . PHP_EOL
     );
 
     die(1);
@@ -59,7 +59,7 @@ use ElementaryFramework\LightQL\CLI\Commands\GenerateEntitiesCommand;
 use Symfony\Component\Console\Application;
 
 // Create the application
-$app = new Application('A migration tool and entities generator for LightQL', '0.0.1');
+$app = new Application('A database migration tool and entities generator for LightQL', '0.0.1');
 
 // Add commands
 $app->addCommands([
