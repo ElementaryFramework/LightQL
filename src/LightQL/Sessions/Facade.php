@@ -1,280 +1,204 @@
 <?php
 
-/**
- * LightQL - The lightweight PHP ORM
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @category  Library
- * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
- * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
- * @version   1.0.0
- * @link      http://lightql.na2axl.tk
- */
+declare(strict_types=1);
 
 namespace ElementaryFramework\LightQL\Sessions;
 
-use ElementaryFramework\Annotations\Annotations;
-use ElementaryFramework\Annotations\Exceptions\AnnotationException;
-
-use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
-use ElementaryFramework\LightQL\Entities\Entity;
+use ElementaryFramework\LightQL\Annotations\Column;
+use ElementaryFramework\LightQL\Annotations\ManyToMany;
+use ElementaryFramework\LightQL\Annotations\ManyToOne;
+use ElementaryFramework\LightQL\Annotations\NamedQuery;
+use ElementaryFramework\LightQL\Annotations\OneToMany;
+use ElementaryFramework\LightQL\Annotations\OneToOne;
+use ElementaryFramework\LightQL\Annotations\PersistenceUnit as PersistenceUnitAnnotation;
+use ElementaryFramework\LightQL\Annotations\Table;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
+use ElementaryFramework\LightQL\Entities\IPrimaryKey;
 use ElementaryFramework\LightQL\Entities\Query;
+use ElementaryFramework\LightQL\Entities\Relation;
+use ElementaryFramework\LightQL\Enums\FetchMode;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\Exceptions\FacadeException;
+use ElementaryFramework\LightQL\Exceptions\LightQLException;
+use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
+use ElementaryFramework\LightQL\Exceptions\QueryException;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
+use ReflectionAttribute;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionProperty;
 
 /**
- * Facade
+ * Base class for entity facades.
  *
- * Base class for all entity facades.
+ * @template TEntity of IEntity
  *
- * @abstract
- * @category Sessions
- * @package  LightQL
- * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Sessions/Facade
+ * @implements IFacade<TEntity>
  */
 abstract class Facade implements IFacade
 {
     /**
      * The entity manager of this facade.
-     *
-     * @var EntityManager
      */
-    protected $entityManager;
+    protected EntityManager $entityManager;
 
     /**
      * The entity class name managed by this facade.
-     *
-     * @var \ReflectionClass
      */
-    private $_class;
+    private Table $entityTableAnnotation;
+
+    /**
+     * @var class-string<TEntity> The entity class managed by this facade.
+     */
+    private string $entityClass;
 
     /**
      * Facade constructor.
      *
-     * @param string $class The entity class name managed by this facade.
+     * @param class-string<TEntity>|TEntity $class The entity class name managed by this facade.
      *
-     * @throws EntityException When the entity class or object doesn't have an @entity annotation.
-     * @throws FacadeException When the "entityManager" property of this Facade doesn't have a @persistenceUnit annotation.
+     * @throws FacadeException When the entity class or object doesn't have a Table attribute.
+     * @throws FacadeException When the "entityManager" property of this Facade doesn't have a PersistenceUnit attribute.
      * @throws FacadeException When the entity class or object doesn't inherit from the Entity class.
-     * @throws AnnotationException When the Facade is unable to read an annotation.
+     * @throws ReflectionException
+     * @throws LightQLException
+     * @throws PersistenceUnitException
      */
-    public function __construct($class)
+    public function __construct(string|IEntity $class)
     {
-        if (!Annotations::propertyHasAnnotation($this, "entityManager", "@persistenceUnit")) {
-            throw new FacadeException("Cannot create the entity facade. The property \"entityManager\" has no @persistenceUnit annotation.");
+        $propAttributes = new ReflectionProperty($this, 'entityManager')
+            ->getAttributes(PersistenceUnitAnnotation::class);
+
+        if (empty($propAttributes)) {
+            throw new FacadeException("Cannot create the entity facade. The property \"entityManager\" has no PersistenceUnit attribute.");
         }
 
-        if (!Annotations::classHasAnnotation($class, "@entity")) {
-            throw new EntityException("Cannot create an entity without the @entity annotation.");
+        $reflection = new ReflectionClass($class);
+        $classAttributes = $reflection->getAttributes(Table::class);
+
+        if (empty($classAttributes)) {
+            throw new FacadeException("Cannot create the entity facade. The managed entity is missing the Table attribute.");
         }
 
-        if (!is_subclass_of($class, Entity::class)) {
-            throw new FacadeException("Unable to create a facade. The entity class or object seems to be invalid.");
+        if (!is_subclass_of($class, IEntity::class)) {
+            throw new FacadeException("Unable to create a facade. The provided entity class doesn't inherit from the Entity class.");
         }
 
-        $this->_class = new \ReflectionClass($class);
+        $this->entityClass = $reflection->getName();
 
-        $annotations = Annotations::ofProperty($this, "entityManager", "@persistenceUnit");
-        $this->entityManager = new EntityManager(PersistenceUnit::create($annotations[0]->name));
+        /** @var Table $entityTableAnnotation */
+        $entityTableAnnotation = $classAttributes[0]->newInstance();
+        $this->entityTableAnnotation = $entityTableAnnotation;
+
+        /** @var PersistenceUnitAnnotation $persistenceUnit */
+        $persistenceUnit = $propAttributes[0]->newInstance();
+        $this->entityManager = new EntityManager(PersistenceUnit::create($persistenceUnit->name));
     }
 
     /**
-     * Creates an entity.
-     *
-     * @param Entity $entity The entity to create.
-     *
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * {@inheritdoc}
      */
-    public function create(Entity &$entity)
+    public function create(IEntity &$entity): void
     {
-        if (!$this->_class->isInstance($entity)) {
-            throw new FacadeException("Cannot create entity. The type of the entity is not valid for this facade.");
-        }
+        $this->ensureEntityType($entity);
 
-        try {
-            $this->entityManager->persist($entity);
+        $this->entityManager->persist($entity);
 
-            $columns = $entity->getColumns();
-            foreach ($columns as $property => $column) {
-                if ($column->isOneToMany) {
-                    $this->_fetchOneToMany($entity, $property);
-                } elseif ($column->isManyToOne) {
-                    $this->_fetchManyToOne($entity, $property);
-                } elseif ($column->isManyToMany) {
-                    $this->_fetchManyToMany($entity, $property);
-                } elseif ($column->isOneToOne) {
-                    $this->_fetchOneToOne($entity, $property);
-                }
+        $columns = $entity->getColumns();
+        foreach ($columns as $property => $column) {
+            if ($column->isOneToMany) {
+                $this->handleRelation($entity, $property, $this->fetchOneToMany(...));
+            } elseif ($column->isManyToOne) {
+                $this->handleRelation($entity, $property, $this->fetchManyToOne(...));
+            } elseif ($column->isManyToMany) {
+                $this->handleRelation($entity, $property, $this->fetchManyToMany(...));
+            } elseif ($column->isOneToOne) {
+                $this->handleRelation($entity, $property, $this->fetchOneToOne(...));
             }
-        } catch (\Exception $e) {
-            throw new FacadeException($e->getMessage());
         }
     }
 
     /**
-     * Edit an entity.
-     *
-     * @param Entity $entity The entity to edit.
-     *
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * {@inheritdoc}
      */
-    public function edit(Entity &$entity)
+    public function update(IEntity &$entity): void
     {
-        if (!$this->_class->isInstance($entity)) {
-            throw new FacadeException("Cannot edit entity. The type of the entity is not valid for this facade.");
-        }
+        $this->ensureEntityType($entity);
 
         $this->entityManager->merge($entity);
     }
 
     /**
-     * Delete an entity.
-     *
-     * @param Entity $entity The entity to delete.
-     *
-     * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * {@inheritdoc }
      */
-    public function delete(Entity &$entity)
+    public function delete(IEntity &$entity): void
     {
-        if (!$this->_class->isInstance($entity)) {
-            throw new FacadeException("Cannot edit entity. The type of the entity is not valid for this facade.");
-        }
+        $this->ensureEntityType($entity);
 
         $this->entityManager->merge($entity);
         $this->entityManager->delete($entity);
     }
 
     /**
-     * Find an entity.
+     * {@inheritdoc}
      *
-     * @param mixed $id The id of the entity to find
-     *
-     * @return Entity
-     *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws ReflectionException
      */
-    public function find($id): Entity
+    public function retrieve(int|string|IPrimaryKey $id): IEntity
     {
-        $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
-
-        return $this->_parseRawEntity(
-            $this->entityManager->find($this->getEntityClassName(), $id),
-            $annotations
+        return $this->parseRawEntity(
+            $this->entityManager->find($this->entityClass, $id),
         );
     }
 
     /**
-     * Find all entities.
+     * {@inheritdoc}
      *
-     * @return Entity[]
-     *
-     * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws ReflectionException
      */
-    public function findAll(): array
+    public function list(): array
     {
-        $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
-
         $rawEntities = $this->entityManager
             ->getLightQL()
-            ->from($annotations[0]->table)
-            ->selectArray();
+            ->builder()
+            ->from($this->entityTableAnnotation->table)
+            ->select()
+            ->execute()
+            ->fetchAll();
 
-        return $this->_parseRawEntities($rawEntities, $annotations);
+        return $this->parseRawEntities($rawEntities);
     }
 
     /**
-     * Find all entities in the given range.
+     * {@inheritdoc}
      *
-     * @param int $start  The starting offset.
-     * @param int $length The number of entities to find.
-     *
-     * @return Entity[]
-     *
-     * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws ReflectionException
      */
-    public function findRange(int $start, int $length): array
+    public function range(int $start, int $length): array
     {
-        $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
-
         $rawEntities = $this->entityManager
             ->getLightQL()
-            ->from($annotations[0]->table)
+            ->builder()
+            ->from($this->entityTableAnnotation->table)
             ->limit($start, $length)
-            ->selectArray();
+            ->select()
+            ->execute()
+            ->fetchAll();
 
-        return $this->_parseRawEntities($rawEntities, $annotations);
+        return $this->parseRawEntities($rawEntities);
     }
 
     /**
-     * Count the number of entities.
-     *
-     * @return int
-     *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * {@inheritdoc}
      */
     public function count(): int
     {
-        $annotations = Annotations::ofClass($this->getEntityClassName(), "@entity");
-
         return $this->entityManager
             ->getLightQL()
-            ->from($annotations[0]->table)
+            ->builder()
+            ->from($this->entityTableAnnotation->table)
             ->count();
-    }
-
-    /**
-     * Returns the entity class name of this facade.
-     *
-     * @return string
-     */
-    public function getEntityClassName(): string
-    {
-        return $this->_class->getName();
-    }
-
-    /**
-     * Returns the entity manager for this facade.
-     *
-     * @return EntityManager
-     */
-    public function getEntityManager(): EntityManager
-    {
-        return $this->entityManager;
     }
 
     /**
@@ -285,19 +209,21 @@ abstract class Facade implements IFacade
      * @return Query
      *
      * @throws FacadeException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
+     * @throws ReflectionException
      */
     public function getNamedQuery(string $name): Query
     {
-        if (!Annotations::classHasAnnotation($this->_class->name, "@namedQuery")) {
-            throw new FacadeException("The {$this->_class->name} has no @namedQuery annotation.");
+        $reflection = new ReflectionClass($this->entityClass);
+        $attributes = array_map(fn(ReflectionAttribute $attribute) => $attribute->newInstance(), $reflection->getAttributes(NamedQuery::class));
+
+        if (empty($attributes)) {
+            throw new FacadeException("The {$reflection->name} class has no NamedQuery attribute.");
         }
 
-        $namedQueries = Annotations::ofClass($this->getEntityClassName(), "@namedQuery");
         $query = null;
 
-        /** @var NamedQueryAnnotation $namedQuery */
-        foreach ($namedQueries as $namedQuery) {
+        /** @var NamedQuery $namedQuery */
+        foreach ($attributes as $namedQuery) {
             if ($namedQuery->name === $name) {
                 $query = $namedQuery->query;
                 break;
@@ -305,39 +231,44 @@ abstract class Facade implements IFacade
         }
 
         if ($query === null) {
-            throw new FacadeException("The {$this->_class->name} has no @namedQuery annotation with the name {$name}.");
+            throw new FacadeException("The {$reflection->name} class has no NamedQuery attribute with the name {$name}.");
         }
 
-        $q = new Query($this->entityManager);
-        $q->setEntity($this->_class);
-        $q->setQuery($query);
-
-        return $q;
+        return new Query($this->entityManager)
+            ->setEntity($this->entityClass)
+            ->setQuery($query);
     }
 
     /**
      * Fetch data for a many-to-many relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in many-to-many relation.
+     * @param TEntity $entity The managed entity.
+     * @param string $property The property in many-to-many relation.
+     * @return list<TEntity>
      *
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
+     * @throws ReflectionException
+     * @throws QueryException
      */
-    private function _fetchManyToMany(&$entity, $property)
+    private function fetchManyToMany(IEntity $entity, string $property): array
     {
-        $manyToMany = Annotations::ofProperty($entity, $property, "@manyToMany");
-        $column = Annotations::ofProperty($entity, $property, "@column");
-        $entityAnnotations = Annotations::ofClass($entity, "@entity");
+        $propReflection = new ReflectionProperty($entity, $property);
+
+        /** @var ManyToMany $manyToMany */
+        $manyToMany = $propReflection->getAttributes(ManyToMany::class)[0]->newInstance();
+        /** @var Column $column */
+        $column = $propReflection->getAttributes(Column::class)[0]->newInstance();
 
         $mappedPropertyName = null;
 
-        $referencedEntity = new $manyToMany[0]->entity;
+        /** @var IEntity $referencedEntity */
+        $referencedEntity = new $manyToMany->entity;
         foreach ($referencedEntity->getColumns() as $p => $c) {
             if ($c->isManyToMany) {
-                $mappedManyToMany = Annotations::ofProperty($referencedEntity, $p, "@manyToMany");
-                if ($mappedManyToMany[0]->crossTable === $manyToMany[0]->crossTable) {
+                /** @var ManyToMany $mappedManyToMany */
+                $mappedManyToMany = new ReflectionProperty($referencedEntity, $p)->getAttributes(ManyToMany::class)[0]->newInstance();
+                if ($mappedManyToMany->pivotTable === $manyToMany->pivotTable) {
                     $mappedPropertyName = $p;
                     break;
                 }
@@ -346,160 +277,182 @@ abstract class Facade implements IFacade
         unset($referencedEntity);
 
         if ($mappedPropertyName === null) {
-            throw new EntityException("Unable to find a suitable property with a @manyToMany annotation in the entity \"$manyToMany[0]->entity\".");
+            throw new EntityException("Unable to find a suitable property with a ManyToMany attribute in the entity \"{$manyToMany->entity}\".");
         }
 
-        $mappedPropertyManyToManyAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $mappedPropertyName, "@manyToMany");
-        $mappedPropertyColumnAnnotation = Annotations::ofProperty($manyToMany[0]->entity, $mappedPropertyName, "@column");
-        $referencedEntityAnnotations = Annotations::ofClass($manyToMany[0]->entity, "@entity");
+        /** @var ManyToMany $mappedPropertyManyToManyAnnotation */
+        $mappedPropertyManyToManyAnnotation = new ReflectionProperty($manyToMany->entity, $mappedPropertyName)->getAttributes(ManyToMany::class)[0]->newInstance();
+        /** @var Column $mappedPropertyColumnAnnotation */
+        $mappedPropertyColumnAnnotation = new ReflectionProperty($manyToMany->entity, $mappedPropertyName)->getAttributes(Column::class)[0]->newInstance();
+        /** @var Table $referencedEntityAnnotation */
+        $referencedEntityAnnotation = new ReflectionClass($manyToMany->entity)->getAttributes(Table::class)[0]->newInstance();
 
-        $lightql = $this->entityManager->getLightQL();
+        $className = $manyToMany->entity;
 
-        $results = $lightql
-            ->from($manyToMany[0]->crossTable)
-            ->where(array("{$manyToMany[0]->crossTable}.{$manyToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
-            ->joinArray(
-                "{$referencedEntityAnnotations[0]->table}.*",
-                array(
-                    array(
-                        "side" => "LEFT",
-                        "table" => $referencedEntityAnnotations[0]->table,
-                        "cond" => "{$manyToMany[0]->crossTable}.{$mappedPropertyAnnotation[0]->referencedColumn} = {$referencedEntityAnnotations[0]->table}.{$mappedPropertyColumnAnnotation[0]->name}"
-                    )
+        return array_map(
+            fn($item) => new $className($item),
+            $this->entityManager
+                ->getLightQL()
+                ->builder()
+                ->from($manyToMany->pivotTable)
+                ->where([
+                    "{$manyToMany->pivotTable}.{$manyToMany->foreignColumn}" => $entity->get($column->name)
+                ])
+                ->leftJoin(
+                    $referencedEntityAnnotation->table,
+                    "{$manyToMany->pivotTable}.{$mappedPropertyManyToManyAnnotation->foreignColumn} = {$referencedEntityAnnotation->table}.{$mappedPropertyColumnAnnotation->name}"
                 )
-            );
-
-        $className = $manyToMany[0]->entity;
-        $entity->{$property} = array_map(function($item) use ($manyToMany, $className) {
-            return new $className($item);
-        }, $results);
+                ->select()
+                ->execute()
+                ->fetchAll()
+        );
     }
 
     /**
      * Fetch data for a one-to-many relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in one-to-many relation.
+     * @param TEntity $entity The managed entity.
+     * @param string $property The property in one-to-many relation.
+     * @return TEntity|null
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
+     * @throws ReflectionException
+     * @throws QueryException
      */
-    private function _fetchOneToMany(&$entity, $property)
+    private function fetchOneToMany(IEntity $entity, string $property): IEntity|null
     {
-        $oneToMany = Annotations::ofProperty($entity, $property, "@oneToMany");
-        $column = Annotations::ofProperty($entity, $property, "@column");
-        $referencedEntityAnnotations = Annotations::ofClass($oneToMany[0]->entity, "@entity");
+        /** @var OneToMany $oneToMany */
+        $oneToMany = new ReflectionProperty($entity, $property)->getAttributes(OneToMany::class)[0]->newInstance();
+        /** @var Column $column */
+        $column = new ReflectionProperty($entity, $property)->getAttributes(Column::class)[0]->newInstance();
+        /** @var Table $referencedEntityAnnotation */
+        $referencedEntityAnnotation = new ReflectionClass($oneToMany->entity)->getAttributes(Table::class)[0]->newInstance();
 
-        $mappedPropertyName = $this->_resolveMappedPropertyName($oneToMany[0]->entity, "ManyToOne", $oneToMany[0]->referencedColumn);
+        $mappedPropertyName = $oneToMany->mappedBy;
 
-        if ($mappedPropertyName === null) {
-            throw new EntityException("Unable to find a suitable property with @manyToOne annotation in the entity \"{$oneToMany[0]->entity}\".");
-        }
+        /** @var ManyToOne $mappedPropertyManyToOneAnnotation */
+        $mappedPropertyManyToOneAnnotation = new ReflectionProperty($oneToMany->entity, $mappedPropertyName)->getAttributes(ManyToOne::class)[0]->newInstance();
 
-        $mappedPropertyManyToOneAnnotation = Annotations::ofProperty($oneToMany[0]->entity, $mappedPropertyName, "@manyToOne");
+        $result = $this->entityManager
+            ->getLightQL()
+            ->builder()
+            ->from($referencedEntityAnnotation->table)
+            ->where([
+                "{$referencedEntityAnnotation->table}.{$mappedPropertyManyToOneAnnotation->localColumn}" => $entity->get($column->name)
+            ])
+            ->select("{$referencedEntityAnnotation->table}.*")
+            ->execute()
+            ->fetchFirst();
 
-        $lightql = $this->entityManager->getLightQL();
-
-        $result = $lightql
-            ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToMany[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
-            ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
-
-        $className = $oneToMany[0]->entity;
-
-        $entity->{$property} = $result;
-
-        if ($result !== null) {
-            $entity->{$property} = new $className($result);
-        }
+        return $result !== null ? new ($oneToMany->entity)($result) : null;
     }
 
     /**
      * Fetch data for a many-to-one relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in many-to-one relation.
+     * @param TEntity $entity The managed entity.
+     * @param string $property The property in many-to-one relation.
+     * @return list<TEntity>
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
+     * @throws EntityException
+     * @throws ReflectionException
+     * @throws QueryException
      */
-    private function _fetchManyToOne(&$entity, $property)
+    private function fetchManyToOne(IEntity &$entity, string $property): array
     {
-        $manyToOne = Annotations::ofProperty($entity, $property, "@manyToOne");
-        $column = Annotations::ofProperty($entity, $property, "@column");
-        $referencedEntityAnnotations = Annotations::ofClass($manyToOne[0]->entity, "@entity");
+        /** @var ManyToOne $manyToOne */
+        $manyToOne = new ReflectionProperty($entity, $property)->getAttributes(ManyToOne::class)[0]->newInstance();
+        /** @var Column $column */
+        $column = new ReflectionProperty($entity, $property)->getAttributes(Column::class)[0]->newInstance();
+        /** @var Table $referencedEntityAnnotation */
+        $referencedEntityAnnotation = new ReflectionClass($manyToOne->entity)->getAttributes(Table::class)[0]->newInstance();
 
-        $mappedPropertyName = $this->_resolveMappedPropertyName($manyToOne[0]->entity, "OneToMany", $manyToOne[0]->referencedColumn);
+        $mappedPropertyName = $this->resolveMappedPropertyName($manyToOne->entity, "OneToMany", $manyToOne->referencedColumn);
 
         if ($mappedPropertyName === null) {
-            throw new EntityException("Unable to find a suitable property with @oneToMany annotation in the entity \"{$manyToOne[0]->entity}\".");
+            throw new EntityException("Unable to find a suitable property with @oneToMany annotation in the entity \"{$manyToOne->entity}\".");
         }
 
-        $lightql = $this->entityManager->getLightQL();
+        $className = $manyToOne->entity;
 
-        $results = $lightql
-            ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$manyToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
-            ->selectArray("{$referencedEntityAnnotations[0]->table}.*");
-
-        $entity->{$property} = array_map(function($item) use ($manyToOne, $entity, $mappedPropertyName) {
-            $className = $manyToOne[0]->entity;
-            $e = new $className($item);
-            $e->{$mappedPropertyName} = &$entity;
-            return $e;
-        }, $results);
+        return array_map(
+            function ($item) use ($className, &$entity, $mappedPropertyName) {
+                $e = new $className($item);
+                $e->{$mappedPropertyName} = &$entity;
+                return $e;
+            },
+            $this->entityManager
+                ->getLightQL()
+                ->builder()
+                ->from($referencedEntityAnnotation->table)
+                ->where([
+                    "{$referencedEntityAnnotation->table}.{$manyToOne->referencedColumn}" => $entity->get($column->name)
+                ])
+                ->select("{$referencedEntityAnnotation->table}.*")
+                ->execute()
+                ->fetchAll()
+        );
     }
 
     /**
      * Fetch data for a one-to-one relation.
      *
-     * @param IEntity $entity   The managed entity.
-     * @param string  $property The property in one-to-one relation.
+     * @param TEntity $entity The managed entity.
+     * @param string $property The property in one-to-one relation.
+     * @return TEntity|null
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
+     * @throws ReflectionException
+     * @throws EntityException
+     * @throws QueryException
      */
-    private function _fetchOneToOne(&$entity, $property)
+    private function fetchOneToOne(IEntity &$entity, string $property): IEntity|null
     {
-        $oneToOne = Annotations::ofProperty($entity, $property, "@oneToOne");
-        $column = Annotations::ofProperty($entity, $property, "@column");
-        $referencedEntityAnnotations = Annotations::ofClass($oneToOne[0]->entity, "@entity");
+        /** @var OneToOne $oneToOne */
+        $oneToOne = new ReflectionProperty($entity, $property)->getAttributes(OneToOne::class)[0]->newInstance();
+        /** @var Column $column */
+        $column = new ReflectionProperty($entity, $property)->getAttributes(Column::class)[0]->newInstance();
+        /** @var Table $referencedEntityAnnotation */
+        $referencedEntityAnnotation = new ReflectionClass($oneToOne->entity)->getAttributes(Table::class)[0]->newInstance();
 
-        $mappedPropertyName = $this->_resolveMappedPropertyName($oneToOne[0]->entity, "OneToOne", $oneToOne[0]->referencedColumn);
+        $mappedPropertyName = $oneToOne->mappedBy ?? $this->resolveMappedPropertyName($oneToOne->entity, "OneToOne", $oneToOne->referencedColumn);
 
         if ($mappedPropertyName === null) {
-            throw new EntityException("Unable to find a suitable property with @oneToOne annotation in the entity \"{$oneToOne[0]->entity}\".");
+            throw new EntityException("Unable to find a suitable property with OneToOne attribute in the entity \"{$oneToOne->entity}\".");
         }
 
-        $mappedPropertyAnnotation = Annotations::ofProperty($oneToOne[0]->entity, $mappedPropertyName, "@oneToOne");
+        $result = $this->entityManager
+            ->getLightQL()
+            ->builder()
+            ->from($referencedEntityAnnotation->table)
+            ->where([
+                "{$referencedEntityAnnotation->table}.{$oneToOne->referencedColumn}" => $entity->get($column->name)
+            ])
+            ->select("{$referencedEntityAnnotation->table}.*")
+            ->execute()
+            ->fetchFirst();
 
-        $lightql = $this->entityManager->getLightQL();
-
-        $result = $lightql
-            ->from($referencedEntityAnnotations[0]->table)
-            ->where(array("{$referencedEntityAnnotations[0]->table}.{$oneToOne[0]->referencedColumn}" => $lightql->quote($entity->get($column[0]->name))))
-            ->selectFirst("{$referencedEntityAnnotations[0]->table}.*");
-
-        $className = $oneToOne[0]->entity;
-
-        $entity->{$property} = $result;
 
         if ($result !== null) {
-            $entity->{$property} = new $className($result);
-            $entity->{$property}->{$mappedPropertyName} = &$entity;
+            $relation = new ($oneToOne->entity)($result);
+            $relation->{$mappedPropertyName} = &$entity;
+            return $relation;
         }
+
+        return null;
     }
 
     /**
      * Resolve the name of a property mapped by an annotation.
      *
      * @param string $entityClass The class name of the mapped property.
-     * @param string $check       The type of annotation to find.
-     * @param string $column      The mapped column name.
+     * @param string $check The type of annotation to find.
+     * @param string $column The mapped column name.
      *
      * @return string|null
      */
-    private function _resolveMappedPropertyName(string $entityClass, string $check, string $column): string
+    private function resolveMappedPropertyName(string $entityClass, string $check, string $column): string|null
     {
         $mappedPropertyName = null;
 
@@ -518,59 +471,84 @@ abstract class Facade implements IFacade
     /**
      * Parse a set of raw data to a set of Entities.
      *
-     * @param array $rawEntities The set of raw entities data provided fromm database.
-     * @param array $annotations The set of entity annotations.
+     * @param list<array<string, mixed>> $rawEntities The set of raw entities data provided from the database.
      *
-     * @return Entity[]
+     * @return list<TEntity>
      *
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws ReflectionException
      */
-    private function _parseRawEntities($rawEntities, $annotations): array
+    private function parseRawEntities(array $rawEntities): array
     {
-        $entities = array();
-
-        foreach ($rawEntities as $rawEntity) {
-            array_push($entities, $this->_parseRawEntity($rawEntity, $annotations));
-        }
-
-        return $entities;
+        return array_map(
+            fn(array $rawEntity) => $this->parseRawEntity($rawEntity),
+            $rawEntities
+        );
     }
 
     /**
      * Parses raw data to Entity.
      *
-     * @param array $rawEntity   Raw entity data provided from database.
-     * @param array $annotations The set of entity annotations.
+     * @param array $rawEntity Raw entity data provided from database.
      *
-     * @return Entity
+     * @return TEntity
      *
      * @throws EntityException
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws ReflectionException
      */
-    private function _parseRawEntity($rawEntity, $annotations): Entity
+    private function parseRawEntity(array $rawEntity): IEntity
     {
-        /** @var Entity $entity */
-        $entity = $this->_class->newInstance($rawEntity);
+        /** @var TEntity $entity */
+        $entity = new ($this->entityClass)($rawEntity);
 
-        if ($annotations[0]->fetchMode === Entity::FETCH_EAGER) {
-            $properties = $this->_class->getProperties();
+        $properties = new ReflectionClass($this->entityClass)->getProperties();
 
-            foreach ($properties as $property) {
-                if (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToMany")) {
-                    $this->_fetchManyToMany($entity, $property->name);
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToMany")) {
-                    $this->_fetchOneToMany($entity, $property->name);
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@manyToOne")) {
-                    $this->_fetchManyToOne($entity, $property->name);
-                } elseif (Annotations::propertyHasAnnotation($entity, $property->name, "@oneToOne")) {
-                    $this->_fetchOneToOne($entity, $property->name);
-                }
+        foreach ($properties as $property) {
+            $attributes = $property->getAttributes();
+
+            if (array_any($attributes, fn(ReflectionAttribute $attribute) => $attribute->name === ManyToMany::class)) {
+                $this->handleRelation($entity, $property->name, $this->fetchManyToMany(...));
+            } elseif (array_any($attributes, fn(ReflectionAttribute $attribute) => $attribute->name === OneToMany::class)) {
+                $this->handleRelation($entity, $property->name, $this->fetchOneToMany(...));
+            } elseif (array_any($attributes, fn(ReflectionAttribute $attribute) => $attribute->name === ManyToOne::class)) {
+                $this->handleRelation($entity, $property->name, $this->fetchManyToOne(...));
+            } elseif (array_any($attributes, fn(ReflectionAttribute $attribute) => $attribute->name === OneToOne::class)) {
+                $this->handleRelation($entity, $property->name, $this->fetchOneToOne(...));
             }
         }
 
         return $entity;
+    }
+
+    /**
+     * @throws FacadeException
+     */
+    private function ensureEntityType(IEntity $entity): void
+    {
+        if (!$entity instanceof $this->entityClass) {
+            throw new FacadeException("Cannot perform action on entity. The type of the entity is not valid for this facade.");
+        }
+    }
+
+    /**
+     * Handles a relation property by ensuring to respect the entity fetch mode (EAGER or LAZY).
+     *
+     * @param TEntity $entity The managed entity.
+     * @param string $property The property in relation.
+     * @param callable $initializer The relation initializer function.
+     *
+     * @throws EntityException
+     */
+    private function handleRelation(IEntity $entity, string $property, callable $initializer): void
+    {
+        if ($this->entityTableAnnotation->fetchMode === FetchMode::EAGER) {
+            $entity->{$property} = new Relation($initializer());
+        } elseif ($this->entityTableAnnotation->fetchMode === FetchMode::LAZY) {
+            $entity->{$property} = new ReflectionClass(Relation::class)->newLazyGhost(function (Relation $relation) use ($initializer) {
+                $relation->__construct($initializer());
+            });
+        } else {
+            throw new EntityException("The fetch mode of the entity \"{$this->entityClass}\" is not valid.");
+        }
     }
 }

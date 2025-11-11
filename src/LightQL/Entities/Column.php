@@ -1,186 +1,90 @@
 <?php
 
-/**
- * LightQL - The lightweight PHP ORM
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @category  Library
- * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
- * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
- * @version   1.0.0
- * @link      http://lightql.na2axl.tk
- */
+declare(strict_types=1);
 
 namespace ElementaryFramework\LightQL\Entities;
 
 /**
  * Column
  *
- * Describe a database table's column.
+ * Describe a single table's column from the database.
  *
- * @category Entities
- * @package  LightQL
- * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/Column
+ * @template T
  */
 class Column
 {
     /**
      * The column name.
-     *
-     * @var string
      */
-    private $_name;
+    private(set) string $name;
 
     /**
      * The column type.
-     *
-     * @var string
      */
-    private $_type;
+    private(set) string $type;
 
     /**
      * The column size (if any).
      *
-     * @var int[]
+     * @var array{int, int}
      */
-    private $_size;
+    private(set) array $size;
 
     /**
      * The column's default value.
      *
-     * @var mixed
+     * @var T
      */
-    private $_default = null;
+    private(set) mixed $default = null;
 
     /**
-     * Defines if the column has the
-     * AUTO_INCREMENT property.
-     *
-     * @var bool
+     * Defines if the column has the AUTO_INCREMENT constraint.
      */
-    public $isAutoIncrement;
+    public bool $isAutoIncrement;
 
     /**
-     * Defines if the column is a
-     * primary key.
-     *
-     * @var bool
+     * Defines if the column is a primary key.
      */
-    public $isPrimaryKey;
+    public bool $isPrimaryKey;
 
     /**
-     * Defines if the column has the
-     * UNIQUE property.
-     *
-     * @var bool
+     * Defines if the column has the UNIQUE constraint.
      */
-    public $isUniqueKey;
+    public bool $isUniqueKey;
 
     /**
-     * Defines if the column is in
-     * a one-to-many relation with another.
-     *
-     * @var bool
+     * Defines if the column is in a one-to-many relation with another.
      */
-    public $isOneToMany;
+    public bool $isOneToMany;
 
     /**
-     * Defines if the column is in
-     * a many-to-one relation with another.
-     *
-     * @var bool
+     * Defines if the column is in a many-to-one relation with another.
      */
-    public $isManyToOne;
+    public bool $isManyToOne;
 
     /**
-     * Defines if the column is in
-     * a many-to-many relation with another.
-     *
-     * @var bool
+     * Defines if the column is in a many-to-many relation with another.
      */
-    public $isManyToMany;
+    public bool $isManyToMany;
 
     /**
-     * Defines if the column is in
-     * a one-to-one relation with another.
-     *
-     * @var bool
+     * Defines if the column is in a one-to-one relation with another.
      */
-    public $isOneToOne;
+    public bool $isOneToOne;
 
     /**
      * Create a new instance of the table column descriptor.
      *
-     * @param string $name    The column's name.
-     * @param string $type    The column's type.
-     * @param int[]  $size    The array of sizes containing (min, max) values only.
-     * @param mixed  $default The default value of the column.
+     * @param string $name The column's name.
+     * @param string $type The column's type.
+     * @param array{int, int} $size The array of sizes containing (min, max) values only.
+     * @param null|T $default The default value of the column.
      */
-    public function __construct(string $name, string $type, array $size, $default = null)
+    public function __construct(string $name, string $type, array $size, mixed $default = null)
     {
-        $this->_name = $name;
-        $this->_type = $type;
-        $this->_size = $size;
-        $this->_default = $default;
-    }
-
-    /**
-     * Returns the column's name.
-     *
-     * @return string
-     */
-    public function getName(): string
-    {
-        return $this->_name;
-    }
-
-    /**
-     * Returns the column's type.
-     *
-     * @return string
-     */
-    public function getType(): string
-    {
-        return $this->_type;
-    }
-
-    /**
-     * Returns the column's size.
-     *
-     * @return array
-     */
-    public function getSize(): array
-    {
-        return $this->_size;
-    }
-
-    /**
-     * Returns the column's default value.
-     *
-     * @return mixed
-     */
-    public function getDefault()
-    {
-        return $this->_default;
+        $this->name = $name;
+        $this->type = $type;
+        $this->size = $size;
+        $this->default = $default;
     }
 }

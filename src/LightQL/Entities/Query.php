@@ -23,8 +23,8 @@
  *
  * @category  Library
  * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
+ * @author    Axel Nana <axel.nana@aliens-group.com>
+ * @copyright 2018 Aliens Group
  * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
  * @version   1.0.0
  * @link      http://lightql.na2axl.tk
@@ -33,6 +33,8 @@
 namespace ElementaryFramework\LightQL\Entities;
 
 use ElementaryFramework\LightQL\Exceptions\QueryException;
+use ReflectionClass;
+use ReflectionException;
 
 /**
  * Query
@@ -41,7 +43,7 @@ use ElementaryFramework\LightQL\Exceptions\QueryException;
  *
  * @category Entities
  * @package  LightQL
- * @author   Nana Axel <ax.lnana@outlook.com>
+ * @author   Nana Axel <axel.nana@aliens-group.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/Query
  */
 class Query
@@ -56,7 +58,7 @@ class Query
     /**
      * The reflection class of the managed entity.
      *
-     * @var \ReflectionClass
+     * @var ReflectionClass
      */
     private $_entityReflection;
 
@@ -94,11 +96,14 @@ class Query
     /**
      * Sets the reflection class of the managed entity.
      *
-     * @param \ReflectionClass $entity The managed entity reflection class instance.
+     * @param class-string<IEntity>|IEntity $entity The managed entity reflection class instance.
+     * @throws ReflectionException
      */
-    public function setEntity(\ReflectionClass $entity)
+    public function setEntity(string|IEntity $entity): self
     {
-        $this->_entityReflection = $entity;
+        $this->_entityReflection = new ReflectionClass($entity);
+
+        return $this;
     }
 
     /**
@@ -106,9 +111,11 @@ class Query
      *
      * @param string $query The named query.
      */
-    public function setQuery(string $query)
+    public function setQuery(string $query): self
     {
         $this->_namedQuery = $query;
+
+        return $this;
     }
 
     /**
@@ -117,9 +124,11 @@ class Query
      * @param string $name  The name of the parameter in the query.
      * @param mixed  $value The value of this parameter.
      */
-    public function setParam(string $name, $value)
+    public function setParam(string $name, $value): self
     {
         $this->_parameters[$name] = $value;
+
+        return $this;
     }
 
     /**

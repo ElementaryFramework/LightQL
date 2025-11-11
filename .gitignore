@@ -16,6 +16,8 @@ composer.lock
 
 # Test files and folders
 tests/
+examples/
+ligthql.db
 
 # Docs (hidden for now)
 docs/

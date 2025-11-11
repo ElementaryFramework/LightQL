@@ -23,8 +23,8 @@
  *
  * @category  Library
  * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
+ * @author    Axel Nana <axel.nana@aliens-group.com>
+ * @copyright 2018 Aliens Group
  * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
  * @version   1.0.0
  * @link      http://lightql.na2axl.tk
@@ -33,6 +33,7 @@
 namespace ElementaryFramework\LightQL\Entities;
 
 use ElementaryFramework\Annotations\Annotations;
+use ElementaryFramework\LightQL\Enums\DBMS;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
@@ -45,7 +46,7 @@ use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
  * @final
  * @category Entities
  * @package  LightQL
- * @author   Nana Axel <ax.lnana@outlook.com>
+ * @author   Nana Axel <axel.nana@aliens-group.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/EntityManager
  */
 final class EntityManager
@@ -56,7 +57,7 @@ final class EntityManager
      *
      * @var PersistenceUnit
      */
-    private $_persistenceUnit;
+    private PersistenceUnit $_persistenceUnit;
 
     /**
      * The LightQL instance used by this
@@ -80,13 +81,11 @@ final class EntityManager
 
         // Create a LightQL instance
         $this->_lightql = new LightQL(
-            array(
-                "dbms" => $this->_persistenceUnit->getDbms(),
-                "database" => $this->_persistenceUnit->getDatabase(),
-                "hostname" => $this->_persistenceUnit->getHostname(),
-                "username" => $this->_persistenceUnit->getUsername(),
-                "password" => $this->_persistenceUnit->getPassword()
-            )
+            database: $this->_persistenceUnit->database,
+            hostname: $this->_persistenceUnit->hostname,
+            username: $this->_persistenceUnit->username,
+            password: $this->_persistenceUnit->password,
+            dbms: $this->_persistenceUnit->dbms,
         );
     }
 
@@ -94,7 +93,7 @@ final class EntityManager
      * Finds an entity from the database.
      *
      * @param string $entityClass The class name of the entity to find.
-     * @param mixed $id           The value of the primary key.
+     * @param mixed $id The value of the primary key.
      *
      * @return array Raw data from database.
      *
@@ -144,12 +143,12 @@ final class EntityManager
     /**
      * Persists an entity into the database.
      *
-     * @param Entity $entity The entity to create.
+     * @param IEntity $entity The entity to create.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
-    public function persist(Entity &$entity)
+    public function persist(IEntity &$entity)
     {
         $entityAnnotation = Annotations::ofClass($entity, "@entity");
 
@@ -179,11 +178,11 @@ final class EntityManager
                 if (Annotations::classHasAnnotation($entity, "@idGenerator")) {
                     $idGeneratorAnnotation = Annotations::ofClass($entity, "@idGenerator");
 
-                    if (\is_subclass_of($idGeneratorAnnotation[0]->generator, IEntityIdGenerator::class)) {
+                    if (\is_subclass_of($idGeneratorAnnotation[0]->generator, IPrimaryKeyGenerator::class)) {
                         // We are safe !
                         // Generate an entity primary key using the generator
                         $idGeneratorClass = new \ReflectionClass($idGeneratorAnnotation[0]->generator);
-                        /** @var IEntityIdGenerator $idGenerator */
+                        /** @var IPrimaryKeyGenerator $idGenerator */
                         $idGenerator = $idGeneratorClass->newInstance();
 
                         $entity->{$idProperty} = $idGenerator->generate($entity);
@@ -228,12 +227,12 @@ final class EntityManager
     /**
      * Merges the entity in the database with the given one.
      *
-     * @param Entity $entity The entity to edit.
+     * @param IEntity $entity The entity to edit.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
-    public function merge(Entity &$entity)
+    public function merge(IEntity &$entity)
     {
         $entityAnnotation = Annotations::ofClass($entity, "@entity");
 
@@ -287,12 +286,12 @@ final class EntityManager
     /**
      * Removes an entity from the database.
      *
-     * @param Entity $entity The entity to delete.
+     * @param IEntity $entity The entity to delete.
      *
      * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
      * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
      */
-    public function delete(Entity &$entity)
+    public function delete(IEntity &$entity)
     {
         $entityAnnotation = Annotations::ofClass($entity, "@entity");
 
@@ -324,7 +323,7 @@ final class EntityManager
 
         foreach ($columns as $property => $column) {
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] =  $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
                 $pk[] = $property;
             }
         }

@@ -1,1060 +1,374 @@
 <?php
 
-/**
- * LightQL - The lightweight PHP ORM
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @category  Library
- * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
- * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
- * @version   1.0.0
- * @link      http://lightql.na2axl.tk
- */
+declare(strict_types=1);
 
 namespace ElementaryFramework\LightQL;
 
-use ElementaryFramework\Annotations\Annotations;
-use ElementaryFramework\LightQL\Annotations\AutoIncrementAnnotation;
-use ElementaryFramework\LightQL\Annotations\ColumnAnnotation;
-use ElementaryFramework\LightQL\Annotations\EntityAnnotation;
-use ElementaryFramework\LightQL\Annotations\IdAnnotation;
-use ElementaryFramework\LightQL\Annotations\IdGeneratorAnnotation;
-use ElementaryFramework\LightQL\Annotations\ManyToManyAnnotation;
-use ElementaryFramework\LightQL\Annotations\ManyToOneAnnotation;
-use ElementaryFramework\LightQL\Annotations\NamedQueryAnnotation;
-use ElementaryFramework\LightQL\Annotations\NotNullAnnotation;
-use ElementaryFramework\LightQL\Annotations\OneToManyAnnotation;
-use ElementaryFramework\LightQL\Annotations\OneToOneAnnotation;
-use ElementaryFramework\LightQL\Annotations\PersistenceUnitAnnotation;
-use ElementaryFramework\LightQL\Annotations\SizeAnnotation;
-use ElementaryFramework\LightQL\Annotations\UniqueAnnotation;
+use ElementaryFramework\LightQL\Enums\DBMS;
 use ElementaryFramework\LightQL\Exceptions\LightQLException;
+use ElementaryFramework\LightQL\Query\Builder;
+use PDO;
+use PDOException;
+use PDOStatement;
 
 /**
- * LightQL - Database Manager Class
- *
- * @package LightQL
- * @author  Nana Axel <ax.lnana@outlook.com>
- * @link    http://lightql.na2axl.tk/docs/api/LightQL/LightQL
+ * Query builder class with parameter binding and type safety.
  */
-class LightQL
+final class LightQL
 {
     /**
-     * Registered SQL operators.
-     *
-     * @var    array
-     * @access private
-     */
-    private static $_operators = array('!=', '<>', '<=', '>=', '=', '<', '>');
-
-    /**
-     * Register all annotations in the manager
-     */
-    public static function registerAnnotations()
-    {
-        $manager = Annotations::getManager();
-
-        $manager->registerAnnotation("autoIncrement", AutoIncrementAnnotation::class);
-        $manager->registerAnnotation("column", ColumnAnnotation::class);
-        $manager->registerAnnotation("entity", EntityAnnotation::class);
-        $manager->registerAnnotation("id", IdAnnotation::class);
-        $manager->registerAnnotation("idGenerator", IdGeneratorAnnotation::class);
-        $manager->registerAnnotation("manyToMany", ManyToManyAnnotation::class);
-        $manager->registerAnnotation("manyToOne", ManyToOneAnnotation::class);
-        $manager->registerAnnotation("namedQuery", NamedQueryAnnotation::class);
-        $manager->registerAnnotation("notNull", NotNullAnnotation::class);
-        $manager->registerAnnotation("oneToMany", OneToManyAnnotation::class);
-        $manager->registerAnnotation("oneToOne", OneToOneAnnotation::class);
-        $manager->registerAnnotation("persistenceUnit", PersistenceUnitAnnotation::class);
-        $manager->registerAnnotation("size", SizeAnnotation::class);
-        $manager->registerAnnotation("unique", UniqueAnnotation::class);
-    }
-
-    /**
-     * The database name.
-     *
-     * @var    string
-     * @access protected
-     */
-    protected $database;
-
-    /**
-     * The table name.
-     *
-     * @var    string
-     * @access protected
-     */
-    protected $table;
-
-    /**
-     * The database server address.
-     *
-     * @var    string
-     * @access protected
-     */
-    protected $hostname;
-
-    /**
-     * The database username.
-     *
-     * @var    string
-     * @access protected
-     */
-    protected $username;
-
-    /**
-     * The database password.
-     *
-     * @var    string
-     * @access protected
-     */
-    protected $password;
-
-    /**
-     * The PDO driver to use.
-     *
-     * @var    string
-     * @access private
-     */
-    private $_driver;
-
-    /**
-     * The DBMS to use.
-     *
-     * @var    string
-     * @access private
-     */
-    private $_dbms;
-
-    /**
-     * The PDO connection options.
-     *
-     * @var    array
-     * @access private
-     */
-    private $_options;
-
-    /**
-     * The DSN used for the PDO connection.
-     *
-     * @var    string
-     * @access private
-     */
-    private $_dsn;
-
-    /**
      * The current PDO instance.
-     *
-     * @var    \PDO
-     * @access private
      */
-    private $_pdo = null;
+    public private(set) ?PDO $pdo = null;
 
     /**
-     * The where clause.
+     * Class constructor.
      *
-     * @var    string
-     * @access private
+     * @param string $database
+     * @param string $hostname
+     * @param string $username
+     * @param string $password
+     * @param DBMS $dbms
+     * @param array $pdoOptions
+     * @param int|null $port
+     * @param string|null $socket
+     * @param string|null $charset
+     * @param string|null $customDsn
+     * @throws LightQLException
      */
-    private $_where = null;
+    public function __construct(
+        private readonly             string  $database,
+        private readonly             string  $hostname = '',
+        private readonly             string  $username = '',
+        private readonly             string  $password = '',
+        public private(set) readonly DBMS    $dbms = DBMS::SQLITE,
+        private readonly             array   $pdoOptions = [],
+        private readonly             ?int    $port = null,
+        private readonly             ?string $socket = null,
+        private readonly             ?string $charset = null,
+        ?string                              $customDsn = null,
+    ) {
+        $dsn = $customDsn ?? $this->buildDsn();
+        $commands = $this->getInitCommands();
 
-    /**
-     * The order clause.
-     *
-     * @var    string
-     * @access private
-     */
-    private $_order = null;
-
-    /**
-     * The limit clause.
-     *
-     * @var    string
-     * @access private
-     */
-    private $_limit = null;
-
-    /**
-     * The "group by" clause
-     *
-     * @var    string
-     * @access private
-     */
-    private $_group = null;
-
-    /**
-     * The distinct clause
-     *
-     * @var    bool
-     * @access private
-     */
-    private $_distinct = false;
-
-    /**
-     * The computed query string.
-     *
-     * @var    string
-     * @access private
-     */
-    private $_queryString = null;
-
-    /**
-     * Class __constructor
-     *
-     * @param array $options The lists of options
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     */
-    public function __construct(array $options = null)
-    {
-        if (!is_array($options)) {
-            return false;
-        }
-
-        $attr = array();
-
-        if (isset($options["dbms"])) {
-            $this->_dbms = strtolower($options["dbms"]);
-        }
-
-        if (isset($options["options"])) {
-            $this->_options = $options["options"];
-        }
-
-        if (isset($options["command"]) && is_array($options["command"])) {
-            $commands = $options["command"];
-        } else {
-            $commands = [];
-        }
-
-        if (isset($options["dsn"])) {
-            if (is_array($options["dsn"]) && isset($options["dsn"]["driver"])) {
-                $this->_driver = $options["dsn"]["driver"];
-                unset($options["dsn"]["driver"]);
-                $attr = $options["dsn"];
-            } else {
-                return false;
-            }
-        } else {
-            if (isset($options["port"]) && is_int($options["port"] * 1)) {
-                $port = $options["port"];
-            }
-
-            switch ($this->_dbms) {
-                case "mariadb":
-                case "mysql":
-                    $this->_driver = "mysql";
-                    $attr = array(
-                        "dbname" => $options["database"]
-                    );
-
-                    if (isset($options["socket"])) {
-                        $attr["unix_socket"] = $options["socket"];
-                    } else {
-                        $attr["host"] = $options["hostname"];
-                        if (isset($port)) {
-                            $attr["port"] = $port;
-                        }
-                    }
-
-                    // Make MySQL using standard quoted identifier
-                    $commands[] = "SET SQL_MODE=ANSI_QUOTES";
-                    break;
-
-                case "pgsql":
-                    $this->_driver = "pgsql";
-                    $attr = array(
-                        "host" => $options["hostname"],
-                        "dbname" => $options['database']
-                    );
-
-                    if (isset($port)) {
-                        $attr["port"] = $port;
-                    }
-                    break;
-
-                case "sybase":
-                    $this->_driver = "dblib";
-                    $attr = array(
-                        "host" => $options["hostname"],
-                        "dbname" => $options["database"]
-                    );
-
-                    if (isset($port)) {
-                        $attr["port"] = $port;
-                    }
-                    break;
-
-                case "oracle":
-                    $this->_driver = "oci";
-                    $attr = array(
-                        "dbname" => $options["hostname"] ?
-                            "//{$options['server']}" . (isset($port) ? ":{$port}" : ":1521") . "/{$options['database']}" :
-                            $options['database']
-                    );
-
-                    if (isset($options["charset"])) {
-                        $attr["charset"] = $options["charset"];
-                    }
-                    break;
-
-                case "mssql":
-                    if (isset($options["driver"]) && $options["driver"] === "dblib") {
-                        $this->_driver = "dblib";
-                        $attr = array(
-                            "host" => $options["hostname"] . (isset($port) ? ":{$port}" : ""),
-                            "dbname" => $options["database"]
-                        );
-                    } else {
-                        $this->_driver = "sqlsrv";
-                        $attr = array(
-                            "Server" => $options["hostname"] . (isset($port) ? ",{$port}" : ""),
-                            "Database" => $options["database"]
-                        );
-                    }
-
-                    // Keep MSSQL QUOTED_IDENTIFIER is ON for standard quoting
-                    $commands[] = "SET QUOTED_IDENTIFIER ON";
-                    // Make ANSI_NULLS is ON for NULL value
-                    $commands[] = "SET ANSI_NULLS ON";
-                    break;
-
-                case "sqlite":
-                    $this->_driver = "sqlite";
-                    $attr = array(
-                        $options['database']
-                    );
-                    break;
-            }
-        }
-
-        $stack = [];
-        foreach ($attr as $key => $value) {
-            $stack[] = is_int($key) ? $value : "{$key}={$value}";
-        }
-
-        $this->_dsn = $this->_driver . ":" . implode($stack, ";");
-
-        if (in_array($this->_dbms, ['mariadb', 'mysql', 'pgsql', 'sybase', 'mssql']) && isset($options['charset'])) {
-            $commands[] = "SET NAMES '{$options['charset']}'";
-        }
-
-        $this->hostname = $options["hostname"];
-        $this->database = $options["database"];
-        $this->username = isset($options['username']) ? $options['username'] : null;
-        $this->password = isset($options['password']) ? $options['password'] : null;
-
-        $this->_instantiate();
-
-        foreach ($commands as $value) {
-            $this->_pdo->exec($value);
-        }
-
-        return $this;
+        $this->connect($dsn, $commands);
     }
 
     /**
-     * Closes a connection
+     * Factory method for backward compatibility with array options.
      *
-     * @return void
+     * @param array<string, mixed> $options
+     * @throws LightQLException
+     */
+    public static function fromArray(array $options): self
+    {
+        $dbms = DBMS::tryFrom(strtolower($options['dbms'] ?? 'sqlite')) ?? DBMS::SQLITE;
+
+        if (isset($options['dsn']['driver'])) {
+            $driver = $options['dsn']['driver'];
+            unset($options['dsn']['driver']);
+
+            $dsnParts = [];
+            foreach ($options['dsn'] as $key => $value) {
+                $dsnParts[] = is_int($key) ? $value : "{$key}={$value}";
+            }
+            $customDsn = $driver . ':' . implode(';', $dsnParts);
+
+            return new self(
+                database: $options['database'] ?? '',
+                hostname: $options['hostname'] ?? '',
+                username: $options['username'] ?? '',
+                password: $options['password'] ?? '',
+                dbms: $dbms,
+                pdoOptions: $options['options'] ?? [],
+                customDsn: $customDsn,
+            );
+        }
+
+        return new self(
+            database: $options['database'] ?? '',
+            hostname: $options['hostname'] ?? '',
+            username: $options['username'] ?? '',
+            password: $options['password'] ?? '',
+            dbms: $dbms,
+            pdoOptions: $options['options'] ?? [],
+            port: isset($options['port']) && is_numeric($options['port']) ? (int)$options['port'] : null,
+            socket: $options['socket'] ?? null,
+            charset: $options['charset'] ?? null,
+        );
+    }
+
+    /**
+     * Close the database connection.
      */
     public function close(): void
     {
-        $this->_pdo = false;
+        $this->pdo = null;
     }
 
     /**
-     * Connect to the database / Instantiate PDO
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException When the connexion fails.
-     *
-     * @return void
+     * Create a new query builder instance.
      */
-    private function _instantiate(): void
+    public function builder(): Builder
+    {
+        return new Builder($this);
+    }
+
+    /**
+     * Execute raw query.
+     *
+     * @throws LightQLException
+     */
+    public function query(string $query, int $mode = PDO::FETCH_ASSOC): PDOStatement
     {
         try {
-            $this->_pdo = new \PDO(
-                $this->_dsn,
-                $this->username,
-                $this->password,
-                $this->_options
-            );
-        } catch (\PDOException $e) {
-            throw new LightQLException($e->getMessage());
-        }
-    }
-
-    /**
-     * Gets the current query string.
-     *
-     * @return string
-     */
-    public function getQueryString(): string
-    {
-        return $this->_queryString;
-    }
-
-    /**
-     * Changes the currently used table
-     *
-     * @param string $table The table's name
-     *
-     * @return \ElementaryFramework\LightQL\LightQL
-     */
-    public function from(string $table): LightQL
-    {
-        $this->table = $table;
-        return $this;
-    }
-
-    /**
-     * Add a where condition.
-     *
-     * @param string|array $condition SQL condition in valid format
-     *
-     * @return \ElementaryFramework\LightQL\LightQL
-     */
-    public function where($condition): LightQL
-    {
-        // where(array('field1'=>'value', 'field2'=>'value'))
-        $this->_where = (null !== $this->_where) ? "{$this->_where} OR (" : "(";
-        if (is_array($condition)) {
-            $i = 0;
-            $operand = "=";
-            foreach ($condition as $column => $value) {
-                $this->_where .= ($i > 0) ? " AND " : "";
-                if (is_int($column)) {
-                    $this->_where .= $value;
-                } else {
-                    $parts = explode(" ", $this->parseValue($value));
-                    foreach (self::$_operators as $operator) {
-                        if (in_array($operator, $parts, true) && $parts[0] === $operator) {
-                            $operand = $operator;
-                        }
-                    }
-                    $this->_where .= "{$column} {$operand} " . str_replace($operand, "", $value);
-                    $operand = "=";
-                }
-                ++$i;
+            $statement = $this->pdo->query($query, $mode);
+            if ($statement === false) {
+                throw new LightQLException("Query execution failed");
             }
-        } else {
-            $this->_where .= $condition;
+            return $statement;
+        } catch (PDOException $e) {
+            throw new LightQLException("Query failed: " . $e->getMessage());
         }
-        $this->_where .= ")";
-
-        return $this;
     }
 
     /**
-     * Add an order clause.
+     * Prepare a statement.
      *
-     * @param string $column The column to sort.
-     * @param string $mode   The sort mode.
-     *
-     * @return \ElementaryFramework\LightQL\LightQL
+     * @param array<int, mixed> $options
+     * @throws LightQLException
      */
-    public function order(string $column, string $mode = "ASC"): LightQL
+    public function prepare(string $query, array $options = []): PDOStatement
     {
-        $this->_order = " ORDER BY {$column} {$mode} ";
-        return $this;
-    }
-
-    /**
-     * Add a limit clause.
-     *
-     * @param int $offset The limit offset.
-     * @param int $count  The number of elements after the offset.
-     *
-     * @return \ElementaryFramework\LightQL\LightQL
-     */
-    public function limit(int $offset, int $count): LightQL
-    {
-        $this->_limit = " LIMIT {$offset}, {$count} ";
-        return $this;
-    }
-
-    /**
-     * Add a group clause.
-     *
-     * @param string $column The column used to group results.
-     *
-     * @return \ElementaryFramework\LightQL\LightQL
-     */
-    public function groupBy(string $column): LightQL
-    {
-        $this->_group = $column;
-        return $this;
-    }
-
-    /**
-     * Add a distinct clause.
-     *
-     * @return \ElementaryFramework\LightQL\LightQL
-     */
-    public function distinct(): LightQL
-    {
-        $this->_distinct = true;
-        return $this;
-    }
-
-    /**
-     * Selects data in database.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return \PDOStatement
-     */
-    public function select($columns = "*"): \PDOStatement
-    {
-        return $this->_select($columns);
-    }
-
-    /**
-     * Executes the SELECT SQL query.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return \PDOStatement
-     */
-    private function _select($columns): \PDOStatement
-    {
-        // Constructing the fields list
-        if (is_array($columns)) {
-            $_fields = "";
-
-            foreach ($columns as $column => $alias) {
-                if (is_int($column)) {
-                    $_fields .= "{$alias}, ";
-                } elseif (is_string($column)) {
-                    $_fields .= "{$column} AS {$alias}, ";
-                }
+        try {
+            $statement = $this->pdo->prepare($query, $options);
+            if ($statement === false) {
+                throw new LightQLException("Failed to prepare statement");
             }
-
-            $columns = trim($_fields, ", ");
-        } elseif (!is_string($columns)) {
-            throw new LightQLException(
-                "Invalid data given for the parameter \$columns." .
-                " Only string and array are supported."
-            );
-        }
-
-        // Constructing the SELECT query string
-        $this->_queryString = trim("SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$columns} FROM {$this->table}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((null !== $this->_order) ? $this->_order : " ") . ((null !== $this->_limit) ? $this->_limit : " ") . ((null !== $this->_group) ? "GROUP BY {$this->_group}" : " "));
-
-        // Preparing the query
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        // Executing the query
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-
-            return $getFieldsData;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
+            return $statement;
+        } catch (PDOException $e) {
+            throw new LightQLException("Prepare failed: " . $e->getMessage());
         }
     }
 
     /**
-     * Prepares a query.
-     *
-     * @param string $query   The query to execute
-     * @param array  $options PDO options
-     *
-     * @uses \PDO::prepare()
-     *
-     * @return \PDOStatement
+     * Get last insert ID.
      */
-    public function prepare(string $query, array $options = array()): \PDOStatement
+    public function lastInsertId(): int
     {
-        return $this->_pdo->prepare($query, $options);
+        return (int)$this->pdo->lastInsertId();
     }
 
     /**
-     * Reset all clauses.
+     * Quote a value.
      */
-    protected function resetClauses()
+    public function quote(string $value): string
     {
-        $this->_distinct = false;
-        $this->_where = null;
-        $this->_order = null;
-        $this->_limit = null;
-        $this->_group = null;
+        return $this->pdo->quote($value);
     }
 
     /**
-     * Selects the first data result of the query.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return array
-     */
-    public function selectFirst($columns = "*")
-    {
-        $result = $this->selectArray($columns);
-
-        if (count($result) > 0) {
-            return $result[0];
-        }
-
-        return null;
-    }
-
-    /**
-     * Selects data as array of arrays in database.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return array
-     */
-    public function selectArray($columns = "*"): array
-    {
-        $select = $this->_select($columns);
-        $result = array();
-
-        while ($r = $select->fetch(\PDO::FETCH_LAZY)) {
-            $result[] = array_diff_key((array)$r, array("queryString" => "queryString"));
-        }
-
-        return $result;
-    }
-
-    /**
-     * Selects data as array of objects in database.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return array
-     */
-    public function selectObject($columns = "*"): array
-    {
-        $select = $this->_select($columns);
-        $result = array();
-
-        while ($r = $select->fetch(\PDO::FETCH_OBJ)) {
-            $result[] = $r;
-        }
-
-        return $result;
-    }
-
-    /**
-     * Selects data in database with table joining.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     * @param mixed $params  The information used for JOIN.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return \PDOStatement
-     */
-    public function join($columns, $params): \PDOStatement
-    {
-        return $this->_join($columns, $params);
-    }
-
-    /**
-     * Executes a SELECT ... JOIN query.
-     *
-     * @param string|array $columns The fields to select. This value can be an array of fields,
-     *                              or a string of fields (according to the SELECT SQL query syntax).
-     * @param string|array $params  The information used for JOIN.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return \PDOStatement
-     */
-    private function _join($columns, $params): \PDOStatement
-    {
-        $joints = $params;
-
-        if (is_array($columns)) {
-            $columns = implode(",", $columns);
-        }
-
-        if (is_array($params)) {
-            $joints = "";
-
-            foreach ($params as $param) {
-                if (is_array($param)) {
-                    $joints .= " {$param['side']} JOIN {$param['table']} ON {$param['cond']} ";
-                } elseif (is_string($param)) {
-                    $joints .= " {$param} ";
-                } else {
-                    throw new LightQLException("Invalid value used for join.");
-                }
-            }
-        }
-
-        $this->_queryString = trim("SELECT" . (($this->_distinct) ? " DISTINCT " : " ") . "{$columns} FROM {$this->table} {$joints}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((null !== $this->_order) ? $this->_order : " ") . ((null !== $this->_limit) ? $this->_limit : ""));
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-            return $getFieldsData;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Selects data as array of arrays in database with table joining.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     * @param mixed $params  The information used for JOIN.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return array
-     */
-    public function joinArray($columns, $params): array
-    {
-        $join = $this->_join($columns, $params);
-        $result = array();
-
-        while ($r = $join->fetch(\PDO::FETCH_LAZY)) {
-            $result[] = array_diff_key((array)$r, array("queryString" => "queryString"));
-        }
-
-        return $result;
-    }
-
-    /**
-     * Selects data as array of objects in database with table joining.
-     *
-     * @param mixed $columns The fields to select. This value can be an array of fields,
-     *                       or a string of fields (according to the SELECT SQL query syntax).
-     * @param mixed $params  The information used for JOIN.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return array
-     */
-    public function joinObject($columns, $params): array
-    {
-        $join = $this->_join($columns, $params);
-        $result = array();
-
-        while ($r = $join->fetch(\PDO::FETCH_OBJ)) {
-            $result[] = $r;
-        }
-
-        return $result;
-    }
-
-    /**
-     * Counts data in table.
-     *
-     * @param string|array $columns The fields to select. This value can be an array of fields,
-     *                              or a string of fields (according to the SELECT SQL query syntax).
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return int|array
-     */
-    public function count($columns = "*")
-    {
-        if (is_array($columns)) {
-            $column = implode(",", $columns);
-        }
-
-        $this->_queryString = trim("SELECT" . ((null !== $this->_group) ? "{$this->_group}," : " ") . "COUNT(" . ((isset($column)) ? $column : $columns) . ") AS lightql_count FROM {$this->table}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : " ") . ((null !== $this->_limit) ? $this->_limit : " ") . ((null !== $this->_group) ? "GROUP BY {$this->_group}" : " "));
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            if (null === $this->_group) {
-                $this->resetClauses();
-                $data = $getFieldsData->fetch();
-                return (int) $data['lightql_count'];
-            }
-
-            $this->resetClauses();
-            $res = array();
-
-            while ($data = $getFieldsData->fetch()) {
-                $res[$data[$this->_group]] = $data['lightql_count'];
-            }
-
-            return $res;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Inserts one set of data in table.
-     *
-     * @param array $fieldsAndValues The fields and the associated values to insert.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return boolean
-     */
-    public function insert(array $fieldsAndValues): bool
-    {
-        $columns = array();
-        $values = array();
-
-        foreach ($fieldsAndValues as $column => $value) {
-            $columns[] = $column;
-            $values[] = $this->parseValue($value);
-        }
-
-        $column = implode(",", $columns);
-        $value = implode(",", $values);
-
-        $this->_queryString = trim("INSERT INTO {$this->table}({$column}) VALUE ({$value})");
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-            return true;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Inserts a multiple set of data at once in table.
-     *
-     * @param array $columns The list of fields to use.
-     * @param array $values  The array of list of values to insert
-     *                       into the specified fields.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return boolean
-     */
-    public function insertMany(array $columns, array $values): bool
-    {
-        $column = implode(",", $columns);
-
-        $this->_queryString = "INSERT INTO {$this->table}({$column}) VALUES";
-
-        foreach ($values as $i => $value) {
-            $value = implode(",", array_map(array($this, "parseValue"), $value));
-            $this->_queryString .= ($i === 0 ? "" : ", ") . " ({$value})";
-        }
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-            return true;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Updates data in table.
-     *
-     * @param array $fieldsAndValues The fields and the associated values to update.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return boolean
-     */
-    public function update(array $fieldsAndValues): bool
-    {
-        $updates = "";
-        $count = count($fieldsAndValues);
-
-        if (is_array($fieldsAndValues)) {
-            foreach ($fieldsAndValues as $column => $value) {
-                $count--;
-                $updates .= "{$column} = " . $this->parseValue($value);
-                $updates .= ($count != 0) ? ", " : "";
-            }
-        } else {
-            $updates = $fieldsAndValues;
-        }
-
-        $this->_queryString = trim("UPDATE {$this->table} SET {$updates}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : ""));
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-            return true;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Deletes data in table.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return boolean
-     */
-    public function delete(): bool
-    {
-        $this->_queryString = trim("DELETE FROM {$this->table}" . ((null !== $this->_where) ? " WHERE {$this->_where}" : ""));
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-            return true;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Truncates a table.
-     *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     *
-     * @return boolean
-     */
-    public function truncate(): bool
-    {
-        $this->_queryString = "TRUNCATE {$this->table}";
-
-        $getFieldsData = $this->prepare($this->_queryString);
-
-        if ($getFieldsData->execute() !== false) {
-            $this->resetClauses();
-            return true;
-        } else {
-            throw new LightQLException($getFieldsData->errorInfo()[2]);
-        }
-    }
-
-    /**
-     * Executes a query.
-     *
-     * @param string $query The query to execute
-     * @param int    $mode  The fetch mode
-     *
-     * @uses \PDO::query()
-     *
-     * @return \PDOStatement
-     */
-    public function query(string $query, int $mode = \PDO::FETCH_LAZY): \PDOStatement
-    {
-        return $this->_pdo->query($query, $mode);
-    }
-
-    /**
-     * Gets the last inserted id by an
-     * INSERT query.
-     *
-     * @uses \PDO::lastInsertId()
-     *
-     * @return int
-     */
-    public function lastInsertID(): int
-    {
-        return intval($this->_pdo->lastInsertId());
-    }
-
-    /**
-     * Quotes a value.
-     *
-     * @param mixed $value The value to quote.
-     *
-     * @uses \PDO::quote()
-     *
-     * @return string
-     */
-    public function quote($value): string
-    {
-        return $this->_pdo->quote($value);
-    }
-
-    /**
-     * Disable auto commit mode and start a transaction.
-     *
-     * @uses \PDO::beginTransaction()
-     *
-     * @return bool
+     * Begin transaction.
      */
     public function beginTransaction(): bool
     {
-        return $this->_pdo->beginTransaction();
+        return $this->pdo->beginTransaction();
     }
 
     /**
-     * Commit changes made during a transaction.
-     *
-     * @uses \PDO::commit()
-     *
-     * @return bool
+     * Commit transaction.
      */
     public function commit(): bool
     {
-        return $this->_pdo->commit();
+        return $this->pdo->commit();
     }
 
     /**
-     * Rollback changes made during a transaction.
-     *
-     * @uses \PDO::rollBack()
-     *
-     * @return bool
+     * Rollback transaction.
      */
     public function rollback(): bool
     {
-        return $this->_pdo->rollBack();
+        return $this->pdo->rollBack();
     }
 
     /**
-     * Converts a value to a string.
+     * Gets the error message from the last query, if any.
      *
-     * @param mixed $value The value to convert.
-     *
-     * @return string
+     * @return string|null The error message from the last query, or null if no error occurred.
      */
-    public function parseValue($value): string
+    public function lastError(): ?string
     {
-        if (is_null($value)) {
-            return "NULL";
-        } elseif (is_bool($value)) {
-            return $value ? "1" : "0";
+        return $this->pdo->errorInfo()[2] ?? null;
+    }
+
+    /**
+     * Build DSN string based on a DBMS type.
+     * @throws LightQLException
+     */
+    private function buildDsn(): string
+    {
+        $driver = $this->dbms->getDriver();
+
+        $attr = match ($this->dbms) {
+            DBMS::MYSQL, DBMS::MARIADB => $this->buildMySqlDsnAttributes(),
+            DBMS::POSTGRESQL => $this->buildPgSqlDsnAttributes(),
+            DBMS::SYBASE => $this->buildSybaseDsnAttributes(),
+            DBMS::ORACLE => $this->buildOracleDsnAttributes(),
+            DBMS::MSSQL => $this->buildMsSqlDsnAttributes($driver),
+            DBMS::SQLITE => [$this->database],
+            DBMS::CUSTOM => throw new LightQLException("Custom DSN is required when using DBMS::CUSTOM"),
+        };
+
+        $parts = [];
+        foreach ($attr as $key => $value) {
+            $parts[] = is_int($key) ? $value : "{$key}={$value}";
+        }
+
+        return $driver . ':' . implode(';', $parts);
+    }
+
+    /**
+     * @return array<string|int, string|int>
+     */
+    private function buildMySqlDsnAttributes(): array
+    {
+        $attr = ['dbname' => $this->database];
+
+        if ($this->socket !== null) {
+            $attr['unix_socket'] = $this->socket;
         } else {
-            return strval($value);
+            $attr['host'] = $this->hostname;
+            if ($this->port !== null) {
+                $attr['port'] = $this->port;
+            }
+        }
+
+        return $attr;
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    private function buildPgSqlDsnAttributes(): array
+    {
+        $attr = [
+            'host' => $this->hostname,
+            'dbname' => $this->database,
+        ];
+
+        if ($this->port !== null) {
+            $attr['port'] = $this->port;
+        }
+
+        return $attr;
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    private function buildSybaseDsnAttributes(): array
+    {
+        $attr = [
+            'host' => $this->hostname,
+            'dbname' => $this->database,
+        ];
+
+        if ($this->port !== null) {
+            $attr['port'] = $this->port;
+        }
+
+        return $attr;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildOracleDsnAttributes(): array
+    {
+        $dbname = $this->hostname
+            ? "//{$this->hostname}" . ($this->port ? ":{$this->port}" : ':1521') . "/{$this->database}"
+            : $this->database;
+
+        $attr = ['dbname' => $dbname];
+
+        if ($this->charset !== null) {
+            $attr['charset'] = $this->charset;
+        }
+
+        return $attr;
+    }
+
+    /**
+     * @return array<string, string|int>
+     */
+    private function buildMsSqlDsnAttributes(string &$driver): array
+    {
+        // MSSQL can use dblib or sqlsrv driver
+        $useDblib = false; // Can be configured if needed
+
+        if ($useDblib) {
+            $driver = 'dblib';
+            return [
+                'host' => $this->hostname . ($this->port ? ":{$this->port}" : ''),
+                'dbname' => $this->database,
+            ];
+        }
+
+        $driver = 'sqlsrv';
+        return [
+            'Server' => $this->hostname . ($this->port ? ",{$this->port}" : ''),
+            'Database' => $this->database,
+        ];
+    }
+
+    /**
+     * Get initialization commands for the connection.
+     *
+     * @return array<int, string>
+     */
+    private function getInitCommands(): array
+    {
+        $commands = [];
+
+        $commands = match ($this->dbms) {
+            DBMS::MYSQL, DBMS::MARIADB => ['SET SQL_MODE=ANSI_QUOTES'],
+            DBMS::MSSQL => ['SET QUOTED_IDENTIFIER ON', 'SET ANSI_NULLS ON'],
+            default => [],
+        };
+
+        if (
+            in_array($this->dbms, [DBMS::MYSQL, DBMS::MARIADB, DBMS::POSTGRESQL, DBMS::SYBASE, DBMS::MSSQL])
+            && $this->charset !== null
+        ) {
+            $commands[] = "SET NAMES " . $this->quote($this->charset);
+        }
+
+        return $commands;
+    }
+
+    /**
+     * Establish database connection.
+     *
+     * @param array<int, string> $initCommands
+     * @throws LightQLException
+     */
+    private function connect(string $dsn, array $initCommands): void
+    {
+        try {
+            $this->pdo = new PDO(
+                $dsn,
+                $this->username,
+                $this->password,
+                $this->pdoOptions
+            );
+
+            $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            foreach ($initCommands as $command) {
+                $this->pdo->exec($command);
+            }
+        } catch (PDOException $e) {
+            throw new LightQLException("Database connection failed: " . $e->getMessage());
         }
     }
 }

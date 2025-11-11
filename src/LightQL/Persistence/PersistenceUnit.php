@@ -1,105 +1,63 @@
 <?php
 
-/**
- * LightQL - The lightweight PHP ORM
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @category  Library
- * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
- * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
- * @version   1.0.0
- * @link      http://lightql.na2axl.tk
- */
+declare(strict_types=1);
 
 namespace ElementaryFramework\LightQL\Persistence;
 
+use ElementaryFramework\LightQL\Enums\DBMS;
 use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
 
 /**
  * Persistence Unit
  *
  * Configures parameters to use for database connection.
- *
- * @category Persistence
- * @package  LightQL
- * @author   Nana Axel <ax.lnana@outlook.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Persistence/PersistenceUnit
  */
 class PersistenceUnit
 {
     /**
      * The DBMS.
-     *
-     * @var string
      */
-    private $_dbms;
+    private(set) DBMS $dbms;
 
     /**
      * The database server address.
-     *
-     * @var string
      */
-    private $_hostname;
+    private(set) string $hostname;
 
     /**
      * The database name.
-     *
-     * @var string
      */
-    private $_database;
+    private(set) string $database;
 
     /**
      * The username to use on connection.
-     *
-     * @var string
      */
-    private $_username;
+    private(set) string $username;
 
     /**
      * The password associated to the username.
-     *
-     * @var string
      */
-    private $_password;
+    private(set) string $password;
 
     /**
      * The list of registered persistence unit files.
      *
-     * @var array
+     * @var array<string, string>
      */
-    private static $_registry = array();
+    private static array $_registry = array();
 
     /**
-     * @var PersistenceUnit[]
+     * @var list<PersistenceUnit>
      */
-    private static $_units = array();
+    private static array $_units = array();
 
     /**
      * Registers a new persistence unit.
      *
-     * @param string $key  The name of the persistence unit.
+     * @param string $key The name of the persistence unit.
      * @param string $path The path to the persistence unit file.
      */
-    public static function register(string $key, string $path)
+    public static function register(string $key, string $path): void
     {
         self::$_registry[$key] = $path;
     }
@@ -107,10 +65,10 @@ class PersistenceUnit
     /**
      * Cleans the persistence unit registry and cache.
      */
-    public static function purge()
+    public static function purge(): void
     {
-        self::$_registry = array();
-        self::$_units = array();
+        self::$_registry = [];
+        self::$_units = [];
     }
 
     /**
@@ -137,31 +95,31 @@ class PersistenceUnit
             }
 
             if (array_key_exists("DBMS", $content)) {
-                $this->_dbms = $content["DBMS"];
+                $this->dbms = DBMS::from($content["DBMS"]);
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the DBMS value.");
             }
 
             if (array_key_exists("Hostname", $content)) {
-                $this->_hostname = $content["Hostname"];
+                $this->hostname = $content["Hostname"];
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the Hostname value.");
             }
 
             if (array_key_exists("DatabaseName", $content)) {
-                $this->_database = $content["DatabaseName"];
+                $this->database = $content["DatabaseName"];
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the DatabaseName value.");
             }
 
             if (array_key_exists("Username", $content)) {
-                $this->_username = $content["Username"];
+                $this->username = $content["Username"];
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the Username value.");
             }
 
             if (array_key_exists("Password", $content)) {
-                $this->_password = $content["Password"];
+                $this->password = $content["Password"];
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the Password value.");
             }
@@ -174,65 +132,14 @@ class PersistenceUnit
      * Creates a new persistence unit by the given key.
      *
      * @param string $key The persistence unit name.
-     *
      * @return PersistenceUnit
-     */
-    public static function create(string $key)
-    {
-        if (array_key_exists($key, self::$_units)) {
-            return self::$_units[$key];
-        } else {
-            return (self::$_units[$key] = new self($key));
-        }
-    }
-
-    /**
-     * Returns the DBMS.
      *
-     * @return string
+     * @throws PersistenceUnitException
      */
-    public function getDbms()
+    public static function create(string $key): static
     {
-        return $this->_dbms;
-    }
-
-    /**
-     * Returns the database name.
-     *
-     * @return string
-     */
-    public function getDatabase(): string
-    {
-        return $this->_database;
-    }
-
-    /**
-     * Returns the database server name.
-     *
-     * @return string
-     */
-    public function getHostname(): string
-    {
-        return $this->_hostname;
-    }
-
-    /**
-     * Returns the password of the user.
-     *
-     * @return string
-     */
-    public function getPassword(): string
-    {
-        return $this->_password;
-    }
-
-    /**
-     * Returns the username.
-     *
-     * @return string
-     */
-    public function getUsername(): string
-    {
-        return $this->_username;
+        return array_key_exists($key, self::$_units)
+            ? self::$_units[$key]
+            : ((self::$_units[$key] = new static($key)));
     }
 }

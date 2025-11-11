@@ -23,8 +23,8 @@
  *
  * @category  Library
  * @package   LightQL
- * @author    Axel Nana <ax.lnana@outlook.com>
- * @copyright 2018 Aliens Group, Inc.
+ * @author    Axel Nana <axel.nana@aliens-group.com>
+ * @copyright 2018 Aliens Group
  * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
  * @version   1.0.0
  * @link      http://lightql.na2axl.tk
@@ -45,7 +45,7 @@ use ElementaryFramework\LightQL\Exceptions\AnnotationException;
  * @abstract
  * @category Entities
  * @package  LightQL
- * @author   Nana Axel <ax.lnana@outlook.com>
+ * @author   Nana Axel <axel.nana@aliens-group.com>
  * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/Entity
  */
 abstract class Entity implements IEntity
