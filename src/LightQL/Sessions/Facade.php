@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace ElementaryFramework\LightQL\Sessions;
 
-use ElementaryFramework\LightQL\Annotations\Column;
-use ElementaryFramework\LightQL\Annotations\ManyToMany;
-use ElementaryFramework\LightQL\Annotations\ManyToOne;
-use ElementaryFramework\LightQL\Annotations\NamedQuery;
-use ElementaryFramework\LightQL\Annotations\OneToMany;
-use ElementaryFramework\LightQL\Annotations\OneToOne;
-use ElementaryFramework\LightQL\Annotations\PersistenceUnit as PersistenceUnitAnnotation;
-use ElementaryFramework\LightQL\Annotations\Table;
+use ElementaryFramework\LightQL\Attributes\Column;
+use ElementaryFramework\LightQL\Attributes\ManyToMany;
+use ElementaryFramework\LightQL\Attributes\ManyToOne;
+use ElementaryFramework\LightQL\Attributes\NamedQuery as NamedQueryAttribute;
+use ElementaryFramework\LightQL\Attributes\OneToMany;
+use ElementaryFramework\LightQL\Attributes\OneToOne;
+use ElementaryFramework\LightQL\Attributes\PersistenceUnit as PersistenceUnitAttribute;
+use ElementaryFramework\LightQL\Attributes\Table;
 use ElementaryFramework\LightQL\Entities\EntityManager;
 use ElementaryFramework\LightQL\Entities\IEntity;
 use ElementaryFramework\LightQL\Entities\IPrimaryKey;
-use ElementaryFramework\LightQL\Entities\Query;
 use ElementaryFramework\LightQL\Entities\Relation;
 use ElementaryFramework\LightQL\Enums\FetchMode;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
@@ -24,6 +23,7 @@ use ElementaryFramework\LightQL\Exceptions\LightQLException;
 use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
 use ElementaryFramework\LightQL\Exceptions\QueryException;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
+use ElementaryFramework\LightQL\Query\NamedQuery;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
@@ -68,7 +68,7 @@ abstract class Facade implements IFacade
     public function __construct(string|IEntity $class)
     {
         $propAttributes = new ReflectionProperty($this, 'entityManager')
-            ->getAttributes(PersistenceUnitAnnotation::class);
+            ->getAttributes(PersistenceUnitAttribute::class);
 
         if (empty($propAttributes)) {
             throw new FacadeException("Cannot create the entity facade. The property \"entityManager\" has no PersistenceUnit attribute.");
@@ -91,7 +91,7 @@ abstract class Facade implements IFacade
         $entityTableAnnotation = $classAttributes[0]->newInstance();
         $this->entityTableAnnotation = $entityTableAnnotation;
 
-        /** @var PersistenceUnitAnnotation $persistenceUnit */
+        /** @var PersistenceUnitAttribute $persistenceUnit */
         $persistenceUnit = $propAttributes[0]->newInstance();
         $this->entityManager = new EntityManager(PersistenceUnit::create($persistenceUnit->name));
     }
@@ -206,15 +206,15 @@ abstract class Facade implements IFacade
      *
      * @param string $name The name of the query.
      *
-     * @return Query
+     * @return NamedQuery
      *
      * @throws FacadeException
      * @throws ReflectionException
      */
-    public function getNamedQuery(string $name): Query
+    public function getNamedQuery(string $name): NamedQuery
     {
         $reflection = new ReflectionClass($this->entityClass);
-        $attributes = array_map(fn(ReflectionAttribute $attribute) => $attribute->newInstance(), $reflection->getAttributes(NamedQuery::class));
+        $attributes = array_map(fn(ReflectionAttribute $attribute) => $attribute->newInstance(), $reflection->getAttributes(NamedQueryAttribute::class));
 
         if (empty($attributes)) {
             throw new FacadeException("The {$reflection->name} class has no NamedQuery attribute.");
@@ -222,7 +222,7 @@ abstract class Facade implements IFacade
 
         $query = null;
 
-        /** @var NamedQuery $namedQuery */
+        /** @var NamedQueryAttribute $namedQuery */
         foreach ($attributes as $namedQuery) {
             if ($namedQuery->name === $name) {
                 $query = $namedQuery->query;
@@ -234,7 +234,7 @@ abstract class Facade implements IFacade
             throw new FacadeException("The {$reflection->name} class has no NamedQuery attribute with the name {$name}.");
         }
 
-        return new Query($this->entityManager)
+        return new NamedQuery($this->entityManager)
             ->setEntity($this->entityClass)
             ->setQuery($query);
     }

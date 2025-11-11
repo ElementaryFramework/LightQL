@@ -1,143 +1,103 @@
 <?php
 
-/**
- * LightQL - The lightweight PHP ORM
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * @category  Library
- * @package   LightQL
- * @author    Axel Nana <axel.nana@aliens-group.com>
- * @copyright 2018 Aliens Group
- * @license   MIT <https://github.com/ElementaryFramework/LightQL/blob/master/LICENSE>
- * @version   1.0.0
- * @link      http://lightql.na2axl.tk
- */
+declare(strict_types=1);
 
 namespace ElementaryFramework\LightQL\Entities;
 
-use ElementaryFramework\Annotations\Annotations;
-use ElementaryFramework\LightQL\Enums\DBMS;
+use ElementaryFramework\LightQL\Attributes\AttributeUtils;
+use ElementaryFramework\LightQL\Attributes\Id;
+use ElementaryFramework\LightQL\Attributes\Column as ColumnAttribute;
+use ElementaryFramework\LightQL\Attributes\IdGenerator;
+use ElementaryFramework\LightQL\Attributes\Table;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
+use ElementaryFramework\LightQL\Exceptions\LightQLException;
+use ElementaryFramework\LightQL\Exceptions\QueryException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
+use Exception;
+use ReflectionClass;
+use ReflectionException;
+use Throwable;
 
 /**
  * Entity Manager
  *
- * Manage all entities, using one same persistence unit.
- *
- * @final
- * @category Entities
- * @package  LightQL
- * @author   Nana Axel <axel.nana@aliens-group.com>
- * @link     http://lightql.na2axl.tk/docs/api/LightQL/Entities/EntityManager
+ * Manage all entities through a single persistence unit.
  */
-final class EntityManager
+final readonly class EntityManager
 {
     /**
-     * The persistence unit of this entity
-     * manager.
-     *
-     * @var PersistenceUnit
+     * The LightQL instance used by this entity manager.
      */
-    private PersistenceUnit $_persistenceUnit;
-
-    /**
-     * The LightQL instance used by this
-     * entity manager.
-     *
-     * @var LightQL
-     */
-    private $_lightql;
+    private LightQL $lightql;
 
     /**
      * EntityManager constructor.
      *
      * @param PersistenceUnit $persistenceUnit The persistence unit to use in this manager.
      *
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
+     * @throws LightQLException
      */
-    public function __construct(PersistenceUnit $persistenceUnit)
+    public function __construct(private PersistenceUnit $persistenceUnit)
     {
-        // Save the persistence unit
-        $this->_persistenceUnit = $persistenceUnit;
-
         // Create a LightQL instance
-        $this->_lightql = new LightQL(
-            database: $this->_persistenceUnit->database,
-            hostname: $this->_persistenceUnit->hostname,
-            username: $this->_persistenceUnit->username,
-            password: $this->_persistenceUnit->password,
-            dbms: $this->_persistenceUnit->dbms,
+        $this->lightql = new LightQL(
+            database: $this->persistenceUnit->database,
+            hostname: $this->persistenceUnit->hostname,
+            username: $this->persistenceUnit->username,
+            password: $this->persistenceUnit->password,
+            dbms: $this->persistenceUnit->dbms,
         );
     }
 
     /**
      * Finds an entity from the database.
      *
-     * @param string $entityClass The class name of the entity to find.
-     * @param mixed $id The value of the primary key.
+     * @param class-string<IEntity> $entityClass The class name of the entity to find.
+     * @param string|int|IPrimaryKey $id The value of the primary key.
      *
      * @return array Raw data from database.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\LightQLException
-     * @throws \ReflectionException
+     * @throws LightQLException
+     * @throws ReflectionException
+     * @throws QueryException
      */
-    public function find(string $entityClass, $id): array
+    public function find(string $entityClass, string|int|IPrimaryKey $id): array
     {
-        $entityAnnotation = Annotations::ofClass($entityClass, "@entity");
+        $table = AttributeUtils::ofClass($entityClass, Table::class);
 
-        /** @var Entity $entity */
+        /** @var IEntity $entity */
         $entity = new $entityClass;
         $columns = $entity->getColumns();
 
-        $where = array();
+        $where = [];
 
         if ($id instanceof IPrimaryKey) {
-            $pkClass = new \ReflectionClass($id);
+            $pkClass = new ReflectionClass($id);
             $properties = $pkClass->getProperties();
 
-            /** @var \ReflectionProperty $property */
             foreach ($properties as $property) {
-                if (Annotations::propertyHasAnnotation($id, $property->getName(), "@id") && Annotations::propertyHasAnnotation($id, $property->getName(), "@column")) {
-                    $name = Annotations::ofProperty($id, $property->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$property->getName()});
+                if (AttributeUtils::propertyHasAttribute($id, $property->getName(), Id::class) && AttributeUtils::propertyHasAttribute($id, $property->getName(), ColumnAttribute::class)) {
+                    $name = AttributeUtils::ofProperty($id, $property->getName(), ColumnAttribute::class)->name;
+                    $where[$name] = $id->{$property->getName()};
                 }
             }
         } else {
-            foreach ($columns as $property => $column) {
-                if (count($where) === 0) {
-                    if ($column->isPrimaryKey) {
-                        $where[$column->getName()] = $this->_lightql->quote($id);
-                    }
-                } else break;
+            foreach ($columns as $column) {
+                if ($column->isPrimaryKey) {
+                    $where[$column->name] = $id;
+                    break;
+                }
             }
         }
 
-        $raw = $this->_lightql
-            ->from($entityAnnotation[0]->table)
+        return $this->lightql
+            ->builder()
+            ->from($table->table)
             ->where($where)
-            ->selectFirst();
-
-        return $raw;
+            ->select()
+            ->execute()
+            ->fetchFirst();
     }
 
     /**
@@ -145,20 +105,19 @@ final class EntityManager
      *
      * @param IEntity $entity The entity to create.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws EntityException|ReflectionException
+     * @throws Throwable
      */
-    public function persist(IEntity &$entity)
+    public function persist(IEntity $entity): void
     {
-        $entityAnnotation = Annotations::ofClass($entity, "@entity");
+        $table = AttributeUtils::ofClass($entity, Table::class);
 
         $columns = $entity->getColumns();
-        $fieldAndValues = array();
+        $fieldAndValues = [];
 
         $autoIncrementProperty = null;
         $idProperty = null;
 
-        /** @var Column $column */
         foreach ($columns as $property => $column) {
             if ($autoIncrementProperty === null && $column->isAutoIncrement) {
                 $autoIncrementProperty = $property;
@@ -167,61 +126,62 @@ final class EntityManager
             if ($idProperty === null && $column->isPrimaryKey) {
                 $idProperty = $property;
             }
+
+            if ($autoIncrementProperty !== null && $idProperty !== null) {
+                break;
+            }
         }
 
         if ($idProperty !== null && ($autoIncrementProperty === null || $autoIncrementProperty !== $idProperty)) {
             // We have a non auto incremented primary key...
             // Check if the value is null or not set
-            if ($entity->{$idProperty} === null || !isset($entity->{$idProperty})) {
+            if (!isset($entity->{$idProperty})) {
                 // We have a not defined non auto incremented primary key...
                 // Check if the entity class has an @idGenerator annotation
-                if (Annotations::classHasAnnotation($entity, "@idGenerator")) {
-                    $idGeneratorAnnotation = Annotations::ofClass($entity, "@idGenerator");
+                if (AttributeUtils::classHasAttribute($entity, IdGenerator::class)) {
+                    $idGeneratorAttribute = AttributeUtils::ofClass($entity, IdGenerator::class);
 
-                    if (\is_subclass_of($idGeneratorAnnotation[0]->generator, IPrimaryKeyGenerator::class)) {
+                    if (is_subclass_of($idGeneratorAttribute->generator, IPrimaryKeyGenerator::class)) {
                         // We are safe !
                         // Generate an entity primary key using the generator
-                        $idGeneratorClass = new \ReflectionClass($idGeneratorAnnotation[0]->generator);
                         /** @var IPrimaryKeyGenerator $idGenerator */
-                        $idGenerator = $idGeneratorClass->newInstance();
+                        $idGenerator = new ReflectionClass($idGeneratorAttribute->generator)->newInstance();
 
                         $entity->{$idProperty} = $idGenerator->generate($entity);
                     } else {
                         // Bad id generator implementation, throw an error
-                        throw new EntityException("The id generator of this entity doesn't implement the IEntityIdGenerator interface.");
+                        throw new EntityException("The id generator of this entity doesn't implement the IPrimaryKeyGenerator interface.");
                     }
 
                 } else {
                     // This will result to a SQL error, throw instead
                     throw new EntityException(
-                        "Cannot persist an entity into the database. The entity primary key has no value, and has not the @autoIncrement annotation." .
-                        " If the table primary key column is auto incremented, consider add the @autoIncrement annotation to the primary key class property." .
-                        " If the table primary key column is not auto incremented, please give a value to the primary key class property before persist the entity, or use a @idGenerator annotation instead."
+                        "Cannot persist an entity into the database. The entity primary key has no value, and has not the AutoIncrement attribute." .
+                        " If the table primary key column is auto incremented, consider adding the AutoIncrement attribute to the primary key class property." .
+                        " If the table primary key column is not auto incremented, please give a value to the primary key class property before to persist the entity, or use a IdGenerator attribute instead."
                     );
                 }
             }
         }
 
-        foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+        foreach ($columns as $column) {
+            $fieldAndValues[$column->name] = $entity->get($column->name);
         }
 
-        $this->_lightql->beginTransaction();
-        try {
-            $this->_lightql
-                ->from($entityAnnotation[0]->table)
-                ->insert($fieldAndValues);
+        $this->lightql->transaction(function () use ($entity, $fieldAndValues, $table, $autoIncrementProperty) {
+            $statement = $this->lightql
+                ->builder()
+                ->from($table->table)
+                ->insert($fieldAndValues)
+                ->execute();
 
             if ($autoIncrementProperty !== null) {
-                $entity->$autoIncrementProperty = $this->_lightql->lastInsertID();
+                $entity->$autoIncrementProperty = $statement->getLastInsertId();
             }
 
-            $this->_lightql->commit();
-        } catch (\Exception $e) {
-            $this->_lightql->rollback();
-
+        }, function (Throwable $e) {
             throw new EntityException($e->getMessage());
-        }
+        });
     }
 
     /**
@@ -229,56 +189,53 @@ final class EntityManager
      *
      * @param IEntity $entity The entity to edit.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws EntityException
+     * @throws ReflectionException
      */
-    public function merge(IEntity &$entity)
+    public function merge(IEntity $entity): void
     {
-        $entityAnnotation = Annotations::ofClass($entity, "@entity");
+        $table = AttributeUtils::ofClass($entity, Table::class);
 
         $columns = $entity->getColumns();
-        $fieldAndValues = array();
+        $fieldAndValues = [];
 
-        $where = array();
+        $where = [];
 
-        $entityReflection = new \ReflectionClass($entity);
+        $entityReflection = new ReflectionClass($entity);
         $entityProperties = $entityReflection->getProperties();
 
-        /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
             $id = $entity->{$property->getName()};
+
             if ($id instanceof IPrimaryKey) {
-                $propertyReflection = new \ReflectionClass($id);
+                $propertyReflection = new ReflectionClass($id);
                 $propertyProperties = $propertyReflection->getProperties();
 
                 foreach ($propertyProperties as $key) {
-                    $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $name = AttributeUtils::ofProperty($id, $key->getName(), ColumnAttribute::class)->name;
+                    $where[$name] = $id->{$key->getName()};
                 }
 
                 break;
             }
         }
 
-        foreach ($columns as $property => $column) {
-            $fieldAndValues[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+        foreach ($columns as $column) {
+            $fieldAndValues[$column->name] = $entity->get($column->name);
 
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->name] = $entity->get($column->name);
             }
         }
 
-        $this->_lightql->beginTransaction();
         try {
-            $this->_lightql
-                ->from($entityAnnotation[0]->table)
+            $this->lightql
+                ->builder()
+                ->from($table->table)
                 ->where($where)
-                ->update($fieldAndValues);
-
-            $this->_lightql->commit();
-        } catch (\Exception $e) {
-            $this->_lightql->rollback();
-
+                ->update($fieldAndValues)
+                ->execute();
+        } catch (Exception $e) {
             throw new EntityException($e->getMessage());
         }
     }
@@ -288,32 +245,30 @@ final class EntityManager
      *
      * @param IEntity $entity The entity to delete.
      *
-     * @throws \ElementaryFramework\Annotations\Exceptions\AnnotationException
-     * @throws \ElementaryFramework\LightQL\Exceptions\EntityException
+     * @throws EntityException
+     * @throws ReflectionException
      */
-    public function delete(IEntity &$entity)
+    public function delete(IEntity $entity): void
     {
-        $entityAnnotation = Annotations::ofClass($entity, "@entity");
+        $table = AttributeUtils::ofClass($entity, Table::class);
 
         $columns = $entity->getColumns();
-        $fieldAndValues = array();
 
-        $where = array();
-        $pk = array();
+        $where = [];
+        $pk = [];
 
-        $entityReflection = new \ReflectionClass($entity);
+        $entityReflection = new ReflectionClass($entity);
         $entityProperties = $entityReflection->getProperties();
 
-        /** @var \ReflectionProperty $property */
         foreach ($entityProperties as $property) {
             $id = $entity->{$property->getName()};
             if ($id instanceof IPrimaryKey) {
-                $propertyReflection = new \ReflectionClass($id);
+                $propertyReflection = new ReflectionClass($id);
                 $propertyProperties = $propertyReflection->getProperties();
 
                 foreach ($propertyProperties as $key) {
-                    $name = Annotations::ofProperty($id, $key->getName(), "@column")[0]->name;
-                    $where[$name] = $this->_lightql->quote($id->{$key->getName()});
+                    $name = AttributeUtils::ofProperty($id, $key->getName(), ColumnAttribute::class)->name;
+                    $where[$name] = $id->{$key->getName()};
                     $pk[] = $property->getName();
                 }
 
@@ -323,28 +278,25 @@ final class EntityManager
 
         foreach ($columns as $property => $column) {
             if ($column->isPrimaryKey) {
-                $where[$column->getName()] = $this->_lightql->quote($entity->get($column->getName()));
+                $where[$column->name] = $entity->get($column->name);
                 $pk[] = $property;
             }
         }
 
-        $this->_lightql->beginTransaction();
         try {
-            $this->_lightql
-                ->from($entityAnnotation[0]->table)
+            $this->lightql
+                ->builder()
+                ->from($table->table)
                 ->where($where)
-                ->delete();
+                ->delete()
+                ->execute();
 
-            if (count($pk) > 0) {
+            if (!empty($pk)) {
                 foreach ($pk as $item) {
                     $entity->$item = null;
                 }
             }
-
-            $this->_lightql->commit();
-        } catch (\Exception $e) {
-            $this->_lightql->rollback();
-
+        } catch (Exception $e) {
             throw new EntityException($e->getMessage());
         }
     }
@@ -357,6 +309,6 @@ final class EntityManager
      */
     public function getLightQL(): LightQL
     {
-        return $this->_lightql;
+        return $this->lightql;
     }
 }

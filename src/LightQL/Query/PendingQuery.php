@@ -9,7 +9,6 @@ use ElementaryFramework\LightQL\Exceptions\QueryException;
 use ElementaryFramework\LightQL\LightQL;
 use PDO;
 use PDOException;
-use PDOStatement;
 use Stringable;
 
 /**

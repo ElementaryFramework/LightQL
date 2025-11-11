@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace ElementaryFramework\LightQL\Annotations;
+namespace ElementaryFramework\LightQL\Attributes;
 
 use Attribute;
 
 /**
- * Auto Increment Attribute
+ * Not Null Attribute
  *
- * Used to define that a property is an auto incremented table column.
+ * Used to set a property as a non-nullable value.
  *
  * This attribute should be used on a property with the {@see Column} attribute to have effect.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class AutoIncrement {}
+class NotNull {}

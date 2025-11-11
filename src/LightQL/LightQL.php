@@ -6,10 +6,12 @@ namespace ElementaryFramework\LightQL;
 
 use ElementaryFramework\LightQL\Enums\DBMS;
 use ElementaryFramework\LightQL\Exceptions\LightQLException;
+use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 use ElementaryFramework\LightQL\Query\Builder;
 use PDO;
 use PDOException;
 use PDOStatement;
+use Throwable;
 
 /**
  * Query builder class with parameter binding and type safety.
@@ -19,7 +21,7 @@ final class LightQL
     /**
      * The current PDO instance.
      */
-    public private(set) ?PDO $pdo = null;
+    private(set) ?PDO $pdo = null;
 
     /**
      * Class constructor.
@@ -37,17 +39,18 @@ final class LightQL
      * @throws LightQLException
      */
     public function __construct(
-        private readonly             string  $database,
-        private readonly             string  $hostname = '',
-        private readonly             string  $username = '',
-        private readonly             string  $password = '',
-        public private(set) readonly DBMS    $dbms = DBMS::SQLITE,
-        private readonly             array   $pdoOptions = [],
-        private readonly             ?int    $port = null,
-        private readonly             ?string $socket = null,
-        private readonly             ?string $charset = null,
-        ?string                              $customDsn = null,
-    ) {
+        private readonly string  $database,
+        private readonly string  $hostname = '',
+        private readonly string  $username = '',
+        private readonly string  $password = '',
+        private(set) readonly DBMS $dbms = DBMS::SQLITE,
+        private readonly array   $pdoOptions = [],
+        private readonly ?int    $port = null,
+        private readonly ?string $socket = null,
+        private readonly ?string $charset = null,
+        ?string                  $customDsn = null,
+    )
+    {
         $dsn = $customDsn ?? $this->buildDsn();
         $commands = $this->getInitCommands();
 
@@ -58,6 +61,7 @@ final class LightQL
      * Factory method for backward compatibility with array options.
      *
      * @param array<string, mixed> $options
+     *
      * @throws LightQLException
      */
     public static function fromArray(array $options): self
@@ -95,6 +99,24 @@ final class LightQL
             port: isset($options['port']) && is_numeric($options['port']) ? (int)$options['port'] : null,
             socket: $options['socket'] ?? null,
             charset: $options['charset'] ?? null,
+        );
+    }
+
+    /**
+     * Factory method used to create a new LightQL instance using a persistence unit.
+     *
+     * @param PersistenceUnit $persistenceUnit The persistence unit.
+     *
+     * @throws LightQLException
+     */
+    public static function fromPersistenceUnit(PersistenceUnit $persistenceUnit): self
+    {
+        return new self(
+            database: $persistenceUnit->database,
+            hostname: $persistenceUnit->hostname,
+            username: $persistenceUnit->username,
+            password: $persistenceUnit->password,
+            dbms: $persistenceUnit->dbms,
         );
     }
 
@@ -165,6 +187,44 @@ final class LightQL
     public function quote(string $value): string
     {
         return $this->pdo->quote($value);
+    }
+
+    /**
+     * Execute the given callback in a transaction, and automatically commit on success.
+     *
+     * @param callable(): void $callback The callback to execute in a transaction.
+     * @param null|callable(Throwable): bool $onError An optional error callback with the exception occurred while executing the callback. This function can
+     * return a boolean saying whether the transaction should be commited or not.
+     *
+     * @throws Throwable
+     */
+    public function transaction(callable $callback, ?callable $onError = null): void
+    {
+        $this->beginTransaction();
+
+        try {
+            $callback();
+            $this->commit();
+        } catch (Throwable $e) {
+            $shouldCommit = false;
+            $lastException = $e;
+
+            try {
+                if ($onError !== null) {
+                    $shouldCommit = $onError($e);
+                }
+            } catch (Throwable $e) {
+                $lastException = $e;
+            }
+
+            if ($shouldCommit) {
+                $this->commit();
+            } else {
+                $this->rollBack();
+            }
+
+            throw $lastException;
+        }
     }
 
     /**
@@ -328,8 +388,6 @@ final class LightQL
      */
     private function getInitCommands(): array
     {
-        $commands = [];
-
         $commands = match ($this->dbms) {
             DBMS::MYSQL, DBMS::MARIADB => ['SET SQL_MODE=ANSI_QUOTES'],
             DBMS::MSSQL => ['SET QUOTED_IDENTIFIER ON', 'SET ANSI_NULLS ON'],

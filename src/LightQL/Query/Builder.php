@@ -10,7 +10,6 @@ use ElementaryFramework\LightQL\Enums\SortOrder;
 use ElementaryFramework\LightQL\Exceptions\LightQLException;
 use ElementaryFramework\LightQL\Exceptions\QueryException;
 use ElementaryFramework\LightQL\LightQL;
-use PDO;
 
 /**
  * Query builder class for constructing SQL queries.

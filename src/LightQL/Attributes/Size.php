@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ElementaryFramework\LightQL\Annotations;
+namespace ElementaryFramework\LightQL\Attributes;
 
 use Attribute;
 use InvalidArgumentException;
