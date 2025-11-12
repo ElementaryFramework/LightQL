@@ -499,16 +499,7 @@ abstract class Facade implements IFacade
     private function parseRow(array $row): IEntity
     {
         /** @var TEntity $entity */
-        $entity = new ($this->entityClass)();
-
-        // Unserialize values
-        foreach ($entity->columns as $column) {
-            if (array_key_exists($column->name, $row)) {
-                $row[$column->name] = $column->unserialize($row[$column->name], $row);
-            }
-        }
-
-        $entity->hydrate($row);
+        $entity = new ($this->entityClass)($row);
 
         $properties = new ReflectionClass($this->entityClass)->getProperties();
 

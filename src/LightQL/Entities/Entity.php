@@ -19,18 +19,23 @@ use ReflectionException;
 abstract class Entity implements IEntity
 {
     /**
-     * The raw data provided from the database.
-     *
-     * @var array<string, mixed>
-     */
-    protected array $raw = [];
-
-    /**
      * The reflection class of this entity.
      *
      * @var ReflectionClass|null
      */
     private ?ReflectionClass $reflection = null;
+
+    /**
+     * @var array<string, mixed> Stores unserialized data for each column of the entity.
+     */
+    private array $unserialized = [];
+
+    /**
+     * The raw data provided from the database.
+     *
+     * @var array<string, mixed>
+     */
+    protected array $raw = [];
 
     /**
      * The array of database columns of this entity.
@@ -76,15 +81,17 @@ abstract class Entity implements IEntity
     /**
      * {@inheritDoc}
      */
-    public function hydrate(array $data): void
+    public function hydrate(array $row): void
     {
         // Merge values
-        foreach ($data as $name => $value) {
-            $this->raw[$name] = $value;
-        }
+        $this->raw = [...$this->raw, ...$row];
 
-        // Populate @column properties
+        // Unserialize and populate columns
         foreach ($this->columns as $property => $column) {
+            if (array_key_exists($column->name, $row)) {
+                $this->unserialized[$column->name] = $column->unserialize($row[$column->name], $row);
+            }
+
             if (!$column->isRelation) {
                 if (array_key_exists($column->name, $this->raw)) {
                     $this->{$property} = $this->raw[$column->name];
@@ -100,9 +107,9 @@ abstract class Entity implements IEntity
      */
     public function get(string $column): mixed
     {
-        // Try to get the raw value
+        // Try to get the value
         if ($this->exists($column)) {
-            return $this->raw[$column];
+            return $this->unserialized[$column];
         }
 
         // Try to get the property value

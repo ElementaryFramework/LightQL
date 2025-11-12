@@ -29,19 +29,23 @@ interface IEntity
     /**
      * Populates data in the entity.
      *
-     * @param array<string, mixed> $data The raw database data.
+     * @param array<string, mixed> $row The raw database data.
      */
-    public function hydrate(array $data): void;
+    public function hydrate(array $row): void;
 
     /**
-     * Gets the raw value of a table column.
+     * Gets the value of a table column.
+     *
+     * The returned value is ensured to be transformed by the applied {@see ITransformer} if any.
      *
      * @param string $column The table column name.
      */
     public function get(string $column): mixed;
 
     /**
-     * Sets the raw value of a table column.
+     * Sets the value of a table column.
+     *
+     * The given value will be transformed by the applied {@see ITransformer} if needed.
      *
      * @param string $column The table column name.
      * @param mixed $value The table column value.
