@@ -12,10 +12,10 @@ use ElementaryFramework\LightQL\Exceptions\PersistenceUnitException;
  *
  * Configures parameters to use for database connection.
  */
-class PersistenceUnit
+final class PersistenceUnit
 {
     /**
-     * The DBMS.
+     * The database management system (postgres, sqlite, mysql, etc.)
      */
     private(set) DBMS $dbms;
 
@@ -40,16 +40,21 @@ class PersistenceUnit
     private(set) string $password;
 
     /**
+     * The database connection port.
+     */
+    private(set) ?string $port = null;
+
+    /**
      * The list of registered persistence unit files.
      *
      * @var array<string, string>
      */
-    private static array $_registry = array();
+    private static array $_registry = [];
 
     /**
      * @var list<PersistenceUnit>
      */
-    private static array $_units = array();
+    private static array $_units = [];
 
     /**
      * Registers a new persistence unit.
@@ -85,13 +90,20 @@ class PersistenceUnit
             $parts = explode(".", $filename);
             $extension = $parts[count($parts) - 1];
 
-            $content = null;
+            $content = [];
+
             if ($extension === "ini") {
-                $content = parse_ini_file(self::$_registry[$key]);
+                $content = $this->parseIniConfig($key);
             } elseif ($extension === "json") {
-                $content = json_decode(file_get_contents(self::$_registry[$key]), true);
+                $content = $this->parseJsonConfig($key);
+            } elseif ($extension === "xml") {
+                $content = $this->parseXmlConfig($key);
             } else {
                 throw new PersistenceUnitException("Unsupported file type used to create persistence unit {$filename}.");
+            }
+
+            if (empty($content)) {
+                throw new PersistenceUnitException("Unable to parse persistence unit configuration file '{$filename}'.");
             }
 
             if (array_key_exists("DBMS", $content)) {
@@ -123,6 +135,10 @@ class PersistenceUnit
             } else {
                 throw new PersistenceUnitException("Malformed persistence unit configuration file, missing the Password value.");
             }
+
+            if (array_key_exists("Port", $content)) {
+                $this->port = $content["Port"];
+            }
         } else {
             throw new PersistenceUnitException('Unable to find the persistence unit with the key "' . $key . '". Have you registered this persistence unit?');
         }
@@ -141,5 +157,63 @@ class PersistenceUnit
         return array_key_exists($key, self::$_units)
             ? self::$_units[$key]
             : ((self::$_units[$key] = new static($key)));
+    }
+
+    /**
+     * Parse a persistence unit in INI format.
+     *
+     * @param string $key The persistence unit key.
+     * @return array<string, string>
+     */
+    public function parseIniConfig(string $key): array
+    {
+        return parse_ini_file(self::$_registry[$key]) ?: [];
+    }
+
+    /**
+     * Parse a persistence unit in JSON format.
+     *
+     * @param string $key The persistence unit key.
+     * @return array<string, string>
+     */
+    public function parseJsonConfig(string $key): array
+    {
+        return json_decode(file_get_contents(self::$_registry[$key]), true);
+    }
+
+    /**
+     * Parse a persistence unit in XML format.
+     *
+     * @param string $key The persistence unit key.
+     * @return array<string, string>
+     *
+     * @throws PersistenceUnitException
+     */
+    public function parseXmlConfig(string $key): array
+    {
+        if (!extension_loaded("dom"))
+            return [];
+
+        $content = [];
+
+        $dom = new \DOMDocument("1.0", "utf-8");
+        $dom->loadXML(file_get_contents(self::$_registry[$key]));
+
+        if ($dom->documentElement->nodeName !== "PersistenceUnit") {
+            throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided.");
+        }
+
+        /** @var \DOMElement $node */
+        foreach ($dom->documentElement->childNodes as $node) {
+            if ($node->nodeType === \XML_TEXT_NODE) {
+                continue;
+            }
+
+            if (in_array($node->nodeName, ['DBMS', 'Hostname', 'DatabaseName', 'Username', 'Password', 'Port'])) {
+                $content[$node->nodeName] = $node->nodeValue;
+            }
+        }
+
+        return $content;
     }
 }
