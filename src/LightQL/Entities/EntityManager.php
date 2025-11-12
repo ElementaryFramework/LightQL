@@ -12,6 +12,7 @@ use ElementaryFramework\LightQL\Attributes\Table;
 use ElementaryFramework\LightQL\Exceptions\EntityException;
 use ElementaryFramework\LightQL\Exceptions\LightQLException;
 use ElementaryFramework\LightQL\Exceptions\QueryException;
+use ElementaryFramework\LightQL\Exceptions\ValidationException;
 use ElementaryFramework\LightQL\LightQL;
 use ElementaryFramework\LightQL\Persistence\PersistenceUnit;
 use Exception;
@@ -164,11 +165,17 @@ final readonly class EntityManager
             }
         }
 
-        foreach ($columns as $column) {
-            $fieldAndValues[$column->name] = $entity->get($column->name);
+        foreach ($columns as $property => $column) {
+            $value = $entity->get($column->name);
+
+            if (!$column->validate($value, $entity)) {
+                throw new ValidationException($property);
+            }
+
+            $fieldAndValues[$column->name] = $value;
         }
 
-        $this->lightql->transaction(function () use ($entity, $fieldAndValues, $table, $autoIncrementProperty) {
+        try {
             $statement = $this->lightql
                 ->builder()
                 ->from($table->table)
@@ -178,10 +185,9 @@ final readonly class EntityManager
             if ($autoIncrementProperty !== null) {
                 $entity->$autoIncrementProperty = $statement->getLastInsertId();
             }
-
-        }, function (Throwable $e) {
+        } catch (Throwable $e) {
             throw new EntityException($e->getMessage());
-        });
+        }
     }
 
     /**
@@ -189,8 +195,9 @@ final readonly class EntityManager
      *
      * @param IEntity $entity The entity to edit.
      *
-     * @throws EntityException
+     * @throws EntityException When the entity is not successfully saved in the database.
      * @throws ReflectionException
+     * @throws ValidationException When one of the entity's property value doesn't pass the assigned validator.
      */
     public function merge(IEntity $entity): void
     {
@@ -220,11 +227,17 @@ final readonly class EntityManager
             }
         }
 
-        foreach ($columns as $column) {
-            $fieldAndValues[$column->name] = $entity->get($column->name);
+        foreach ($columns as $property => $column) {
+            $value = $entity->get($column->name);
+
+            if (!$column->validate($value, $entity)) {
+                throw new ValidationException($property);
+            }
+
+            $fieldAndValues[$column->name] = $value;
 
             if ($column->isPrimaryKey) {
-                $where[$column->name] = $entity->get($column->name);
+                $where[$column->name] = $value;
             }
         }
 

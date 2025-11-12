@@ -14,6 +14,7 @@ use ElementaryFramework\LightQL\Attributes\OneToMany;
 use ElementaryFramework\LightQL\Attributes\OneToOne;
 use ElementaryFramework\LightQL\Attributes\Size;
 use ElementaryFramework\LightQL\Attributes\Unique;
+use ElementaryFramework\LightQL\Attributes\Validator;
 use ReflectionException;
 
 /**
@@ -25,6 +26,21 @@ use ReflectionException;
  */
 class Column
 {
+    /**
+     * @var class-string<IEntity> The class name of the entity holding this column.
+     */
+    private string $entityClass;
+
+    /**
+     * The name of the property referenced by this column.
+     */
+    private string $propertyName;
+
+    /**
+     * The validator instance for this column.
+     */
+    private ?IValidator $validator = null;
+
     /**
      * The column name.
      */
@@ -99,7 +115,7 @@ class Column
      * @param array{int, int} $size The array of sizes containing (min, max) values only.
      * @param null|T $default The default value of the column.
      */
-    public function __construct(string $name, string $type, array $size, mixed $default = null)
+    private function __construct(string $name, string $type, array $size, mixed $default = null)
     {
         $this->name = $name;
         $this->type = $type;
@@ -116,8 +132,6 @@ class Column
      * @param string $property The name of the property.
      *
      * @throws ReflectionException
-     *
-     * @internal
      */
     public static function ofEntityProperty(string|object $entity, string $property): self
     {
@@ -146,6 +160,31 @@ class Column
         $column->isOneToMany = AttributeUtils::propertyHasAttribute($entity, $property, OneToMany::class);
         $column->isOneToOne = AttributeUtils::propertyHasAttribute($entity, $property, OneToOne::class);
 
+        try {
+            $validator = AttributeUtils::ofProperty($entity, $property, Validator::class)->validator;
+            $column->validator = new $validator;
+        } catch (ReflectionException) {
+            $column->validator = null;
+        }
+
+        $column->entityClass = is_string($entity) ? $entity : $entity::class;
+        $column->propertyName = $property;
+
         return $column;
+    }
+
+    /**
+     * Validates the given value for this column if a validator was specified.
+     *
+     * @param mixed $value The value to validate.
+     * @param IEntity $entity The entity instance.
+     */
+    public function validate(mixed $value, IEntity $entity): bool
+    {
+        if ($this->validator === null) {
+            return true;
+        }
+
+        return $this->validator->validate($value, $this->propertyName, $entity);
     }
 }

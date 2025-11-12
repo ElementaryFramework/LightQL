@@ -15,7 +15,9 @@ use InvalidArgumentException;
  *
  * This attribute should be used on a class with the {@see Table} attribute to have effect.
  *
- * @property-read class-string<IPrimaryKeyGenerator> $generator Specify the class name to use as the ID generator of the current entity.
+ * @template TGenerator of IPrimaryKeyGenerator The generator class.
+ *
+ * @property-read class-string<TGenerator> $generator Specify the class name to use as the ID generator of the current entity.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 class IdGenerator
@@ -23,7 +25,7 @@ class IdGenerator
     /**
      * Initialize the id generator attribute.
      *
-     * @param class-string<IPrimaryKeyGenerator> $generator The ID generator class name
+     * @param class-string<TGenerator> $generator The ID generator class name.
      *
      * @throws InvalidArgumentException
      */
@@ -31,7 +33,7 @@ class IdGenerator
         public readonly string $generator
     ) {
         if (empty($generator)) {
-            throw new InvalidArgumentException(self::class . " must have a non-empty \"generator\" property");
+            throw new InvalidArgumentException(self::class . ' must have a non-empty "generator" property');
         }
 
         if (!is_subclass_of($generator, IPrimaryKeyGenerator::class)) {
