@@ -99,14 +99,13 @@ abstract class Facade implements IFacade
     /**
      * {@inheritdoc}
      */
-    public function create(IEntity &$entity): void
+    public function create(IEntity $entity): void
     {
         $this->ensureEntityType($entity);
 
         $this->entityManager->persist($entity);
 
-        $columns = $entity->columns;
-        foreach ($columns as $property => $column) {
+        foreach ($entity->columns as $property => $column) {
             if ($column->isOneToMany) {
                 $this->handleRelation($entity, $property, $this->fetchOneToMany(...));
             } elseif ($column->isManyToOne) {
@@ -122,7 +121,7 @@ abstract class Facade implements IFacade
     /**
      * {@inheritdoc}
      */
-    public function update(IEntity &$entity): void
+    public function update(IEntity $entity): void
     {
         $this->ensureEntityType($entity);
 
@@ -132,7 +131,7 @@ abstract class Facade implements IFacade
     /**
      * {@inheritdoc }
      */
-    public function delete(IEntity &$entity): void
+    public function delete(IEntity $entity): void
     {
         $this->ensureEntityType($entity);
 
@@ -144,12 +143,16 @@ abstract class Facade implements IFacade
      * {@inheritdoc}
      *
      * @throws ReflectionException
+     * @throws QueryException
      */
-    public function retrieve(int|string|IPrimaryKey $id): IEntity
+    public function retrieve(int|string|IPrimaryKey $id): ?IEntity
     {
-        return $this->parseRow(
-            $this->entityManager->find($this->entityClass, $id),
-        );
+        $row = $this->entityManager->find($this->entityClass, $id);
+        if ($row === null) {
+            return null;
+        }
+
+        return $this->parseRow($row);
     }
 
     /**

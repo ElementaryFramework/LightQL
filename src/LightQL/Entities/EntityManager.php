@@ -57,13 +57,13 @@ final readonly class EntityManager
      * @param class-string<IEntity> $entityClass The class name of the entity to find.
      * @param string|int|IPrimaryKey $id The value of the primary key.
      *
-     * @return array Raw data from database.
+     * @return array|null Raw data from database or null if row not found.
      *
      * @throws LightQLException
      * @throws ReflectionException
      * @throws QueryException
      */
-    public function find(string $entityClass, string|int|IPrimaryKey $id): array
+    public function find(string $entityClass, string|int|IPrimaryKey $id): ?array
     {
         $table = AttributeUtils::ofClass($entityClass, Table::class);
 

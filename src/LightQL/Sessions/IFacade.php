@@ -29,7 +29,7 @@ interface IFacade
      * @throws EntityException
      * @throws LightQLException
      */
-    function create(IEntity &$entity): void;
+    function create(IEntity $entity): void;
 
     /**
      * Edit an entity.
@@ -40,7 +40,7 @@ interface IFacade
      * @throws EntityException
      * @throws LightQLException
      */
-    function update(IEntity &$entity): void;
+    function update(IEntity $entity): void;
 
     /**
      * Delete an entity.
@@ -51,19 +51,19 @@ interface IFacade
      * @throws EntityException
      * @throws LightQLException
      */
-    function delete(IEntity &$entity): void;
+    function delete(IEntity $entity): void;
 
     /**
      * Find an entity.
      *
      * @param int|string|IPrimaryKey $id The id of the entity to find
-     * @return TEntity
+     * @return TEntity|null
      *
      * @throws FacadeException
      * @throws EntityException
      * @throws LightQLException
      */
-    function retrieve(int|string|IPrimaryKey $id): IEntity;
+    function retrieve(int|string|IPrimaryKey $id): ?IEntity;
 
     /**
      * Find all entities.
