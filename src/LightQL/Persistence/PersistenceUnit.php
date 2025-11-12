@@ -86,18 +86,24 @@ final class PersistenceUnit
     private function __construct(string $key)
     {
         if (array_key_exists($key, self::$_registry)) {
-            $filename = basename(self::$_registry[$key]);
+            $filepath = self::$_registry[$key];
+
+            if (!file_exists($filepath)) {
+                throw new PersistenceUnitException("The persistence unit file at the path '{$filepath}' cannot be found.");
+            }
+
+            $filename = basename($filepath);
             $parts = explode(".", $filename);
             $extension = $parts[count($parts) - 1];
 
             $content = [];
 
             if ($extension === "ini") {
-                $content = $this->parseIniConfig($key);
+                $content = $this->parseIniConfig($filepath);
             } elseif ($extension === "json") {
-                $content = $this->parseJsonConfig($key);
+                $content = $this->parseJsonConfig($filepath);
             } elseif ($extension === "xml") {
-                $content = $this->parseXmlConfig($key);
+                $content = $this->parseXmlConfig($filepath);
             } else {
                 throw new PersistenceUnitException("Unsupported file type used to create persistence unit {$filename}.");
             }
@@ -152,44 +158,44 @@ final class PersistenceUnit
      *
      * @throws PersistenceUnitException
      */
-    public static function create(string $key): static
+    public static function create(string $key): self
     {
         return array_key_exists($key, self::$_units)
             ? self::$_units[$key]
-            : ((self::$_units[$key] = new static($key)));
+            : ((self::$_units[$key] = new self($key)));
     }
 
     /**
      * Parse a persistence unit in INI format.
      *
-     * @param string $key The persistence unit key.
+     * @param string $filepath The persistence unit file.
      * @return array<string, string>
      */
-    public function parseIniConfig(string $key): array
+    private function parseIniConfig(string $filepath): array
     {
-        return parse_ini_file(self::$_registry[$key]) ?: [];
+        return parse_ini_file($filepath) ?: [];
     }
 
     /**
      * Parse a persistence unit in JSON format.
      *
-     * @param string $key The persistence unit key.
+     * @param string $filepath The persistence unit file.
      * @return array<string, string>
      */
-    public function parseJsonConfig(string $key): array
+    private function parseJsonConfig(string $filepath): array
     {
-        return json_decode(file_get_contents(self::$_registry[$key]), true);
+        return json_decode(file_get_contents($filepath), true);
     }
 
     /**
      * Parse a persistence unit in XML format.
      *
-     * @param string $key The persistence unit key.
+     * @param string $filepath The persistence unit file.
      * @return array<string, string>
      *
      * @throws PersistenceUnitException
      */
-    public function parseXmlConfig(string $key): array
+    private function parseXmlConfig(string $filepath): array
     {
         if (!extension_loaded("dom"))
             return [];
@@ -197,7 +203,7 @@ final class PersistenceUnit
         $content = [];
 
         $dom = new \DOMDocument("1.0", "utf-8");
-        $dom->loadXML(file_get_contents(self::$_registry[$key]));
+        $dom->loadXML(file_get_contents($filepath));
 
         if ($dom->documentElement->nodeName !== "PersistenceUnit") {
             throw new PersistenceUnitException("Invalid persistence unit XML configuration file provided.");
