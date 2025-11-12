@@ -15,7 +15,7 @@ interface IEntity
     /**
      * Populates data in the entity.
      *
-     * @param array $data The raw database data.
+     * @param array<string, mixed> $data The raw database data.
      */
     public function hydrate(array $data): void;
 
