@@ -25,7 +25,7 @@ use InvalidArgumentException;
  * a class with the {@see Table} attribute to have effect.
  */
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
-class Index
+readonly class Index
 {
     /**
      * The columns that form the index.

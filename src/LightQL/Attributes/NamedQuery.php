@@ -13,12 +13,9 @@ use InvalidArgumentException;
  * Used to create named queries associated with an entity.
  *
  * This attribute should be used on a class with the {@see Table} attribute to have effect.
- *
- * @property-read string $name The query's name.
- * @property-read string $query The SQL query.
  */
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
-class NamedQuery
+readonly class NamedQuery
 {
     /**
      * Initialize the named query attribute.
@@ -29,9 +26,10 @@ class NamedQuery
      * @throws InvalidArgumentException
      */
     public function __construct(
-        public readonly string $name,
-        public readonly string $query
-    ) {
+        public string $name,
+        public string $query
+    )
+    {
         if (empty($name)) {
             throw new InvalidArgumentException(self::class . ' requires a non-empty name property.');
         }

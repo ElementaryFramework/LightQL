@@ -13,6 +13,20 @@ namespace ElementaryFramework\LightQL\Entities;
 interface IEntity
 {
     /**
+     * @var array<string, Column> Gets the entity columns.
+     */
+    public array $columns {
+        get;
+    }
+
+    /**
+     * Create a new instance of an entity.
+     *
+     * @param array $row The raw table row data.
+     */
+    public function __construct(array $row = []);
+
+    /**
      * Populates data in the entity.
      *
      * @param array<string, mixed> $data The raw database data.
@@ -33,11 +47,4 @@ interface IEntity
      * @param mixed $value The table column value.
      */
     public function set(string $column, mixed $value): void;
-
-    /**
-     * Gets the entity columns.
-     *
-     * @return array<string, Column>
-     */
-    public function getColumns(): array;
 }

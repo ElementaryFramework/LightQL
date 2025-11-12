@@ -16,11 +16,9 @@ use InvalidArgumentException;
  * This attribute should be used on a property with the {@see Column} attribute to have effect.
  *
  * @template TValidator of IValidator The validator class.
- *
- * @property-read class-string<TValidator> $validator The name of the validator class to use.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class Validator
+readonly class Validator
 {
     /**
      * Initialize the validator attribute.
@@ -30,8 +28,9 @@ class Validator
      * @throws InvalidArgumentException
      */
     public function __construct(
-        public readonly string $validator
-    ) {
+        public string $validator
+    )
+    {
         if (empty($validator)) {
             throw new InvalidArgumentException(self::class . ' must have a non-empty "validator" property');
         }

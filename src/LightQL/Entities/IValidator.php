@@ -7,12 +7,12 @@ namespace ElementaryFramework\LightQL\Entities;
 use ElementaryFramework\LightQL\Attributes\Validator;
 
 /**
- * IValueValidator
+ * IValidator
  *
- * This interface provides a contract for implementations of values validators. Values validators are applied to entity
- * columns through the {@see Validator} attribute. Only one validator is allowed on the same attribute.
+ * This interface provides a contract for implementations of values validators. Value validators are applied to entity
+ * columns through the {@see Validator} attribute. Only one validator is allowed on the same column.
  *
- * @template TValue The value type being validated
+ * @template TValue The value type being validated.
  */
 interface IValidator
 {

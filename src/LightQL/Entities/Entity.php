@@ -37,12 +37,10 @@ abstract class Entity implements IEntity
      *
      * @var Column[]
      */
-    private array $columns = [];
+    private(set) array $columns = [];
 
     /**
-     * Entity constructor.
-     *
-     * @param array<string, mixed> $data The raw table row data.
+     * {@inheritDoc}
      *
      * @throws EntityException
      * @throws ReflectionException
@@ -59,7 +57,7 @@ abstract class Entity implements IEntity
         $pkFound = false;
 
         foreach ($properties as $property) {
-            if ($this->propertyHasAttribute($property->name, ColumnAttribute::class)) {
+            if (AttributeUtils::propertyHasAttribute($this, $property->name, ColumnAttribute::class)) {
                 $column = Column::ofEntityProperty($this, $property->name);
 
                 $this->columns[$property->name] = $column;
@@ -90,11 +88,9 @@ abstract class Entity implements IEntity
             if (!$column->isRelation) {
                 if (array_key_exists($column->name, $this->raw)) {
                     $this->{$property} = $this->raw[$column->name];
-                } elseif ($this->{$property} === null) {
+                } elseif (!isset($this->{$property})) {
                     $this->{$property} = $column->default;
                 }
-            } else {
-                $this->{$property} = null;
             }
         }
     }
@@ -143,31 +139,6 @@ abstract class Entity implements IEntity
     public function set(string $column, $value): void
     {
         $this->hydrate([$column => $value]);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function getColumns(): array
-    {
-        return $this->columns;
-    }
-
-    /**
-     * Checks if a property has the given attribute.
-     *
-     * @template TAttribute Attribute class.
-     *
-     * @param string $property The name of the property.
-     * @param class-string<TAttribute> $annotation The name of the attribute.
-     *
-     * @return bool
-     *
-     * @throws ReflectionException
-     */
-    private function propertyHasAttribute(string $property, string $annotation): bool
-    {
-        return AttributeUtils::propertyHasAttribute($this, $property, $annotation);
     }
 
     /**

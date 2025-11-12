@@ -14,4 +14,4 @@ use Attribute;
  * This attribute should be used on a property with the {@see Column} attribute to have effect.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class AutoIncrement {}
+readonly class AutoIncrement {}

@@ -15,13 +15,10 @@ use InvalidArgumentException;
  *
  * This attribute should be used on a property with the {@see Column} attribute to have effect.
  *
- * @template TEntity of IEntity
- *
- * @property-read class-string<TEntity> $entity The referenced entity class name.
- * @property-read string $mappedBy The name of the property in the referenced entity that maps back to this entity.
+ * @template TEntity of IEntity The related entity class.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class OneToMany
+readonly class OneToMany
 {
     /**
      * Initialize the one-to-many attribute.
@@ -32,16 +29,16 @@ class OneToMany
      * @throws InvalidArgumentException
      */
     public function __construct(
-        public readonly string $entity,
-        public readonly string $mappedBy
+        public string $entity,
+        public string $mappedBy
     )
     {
         if (empty($entity)) {
-            throw new InvalidArgumentException(self::class . " requires a non-empty \"entity\" property");
+            throw new InvalidArgumentException(self::class . ' requires a non-empty "entity" property');
         }
 
         if (empty($mappedBy)) {
-            throw new InvalidArgumentException(self::class . " requires a non-empty \"mappedBy\" property");
+            throw new InvalidArgumentException(self::class . ' requires a non-empty "mappedBy" property');
         }
     }
 }

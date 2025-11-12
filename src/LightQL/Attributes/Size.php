@@ -13,12 +13,9 @@ use InvalidArgumentException;
  * Used to set various sizes for a mapped property.
  *
  * This attribute should be used on a property with the {@see Column} attribute to have effect.
- *
- * @property-read int|null $min The minimal size of the value.
- * @property-read int|null $max The maximal size of the value.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class Size
+readonly class Size
 {
     /**
      * Initialize the size attribute.
@@ -29,11 +26,12 @@ class Size
      * @throws InvalidArgumentException
      */
     public function __construct(
-        public readonly ?int $max = null,
-        public readonly ?int $min = null
-    ) {
+        public ?int $max = null,
+        public ?int $min = null
+    )
+    {
         if ($max === null && $min === null) {
-            throw new InvalidArgumentException(self::class . ' requires a min and/or max property');
+            throw new InvalidArgumentException(self::class . ' requires a "min" and/or "max" property');
         }
     }
 }

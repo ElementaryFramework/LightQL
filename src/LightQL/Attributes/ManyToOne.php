@@ -15,33 +15,32 @@ use InvalidArgumentException;
  *
  * This attribute should be used on a property with the {@see Column} attribute to have effect.
  *
- * @property-read class-string<IEntity>|string $entity The referenced entity class name or table name.
- * @property-read string $referencedColumn The name of the referenced column.
- * @property-read string|null $localColumn The name of the local column. If null, the primary key of the entity is used.
+ * @template TEntity of IEntity The related entity class.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class ManyToOne
+readonly class ManyToOne
 {
     /**
      * Initialize the many-to-one attribute.
      *
-     * @param class-string<IEntity>|string $entity The referenced entity class name
+     * @param class-string<TEntity> $entity The referenced entity class name.
      * @param string|null $localColumn The name of the local column. If null, the primary key of the entity is used.
-     * @param string $referencedColumn The name of the referenced column
+     * @param string $referencedColumn The name of the referenced column.
      *
      * @throws InvalidArgumentException
      */
     public function __construct(
-        public readonly string $entity,
-        public readonly string $referencedColumn,
-        public readonly ?string $localColumn = null,
-    ) {
+        public string  $entity,
+        public string  $referencedColumn,
+        public ?string $localColumn = null,
+    )
+    {
         if (empty($entity)) {
-            throw new InvalidArgumentException(self::class . " requires a non-empty \"entity\" property");
+            throw new InvalidArgumentException(self::class . ' requires a non-empty "entity" property');
         }
 
         if (empty($referencedColumn)) {
-            throw new InvalidArgumentException(self::class . " requires a non-empty \"referencedColumn\" property");
+            throw new InvalidArgumentException(self::class . ' requires a non-empty "referencedColumn" property');
         }
     }
 }

@@ -13,6 +13,7 @@ use ElementaryFramework\LightQL\Attributes\ManyToOne;
 use ElementaryFramework\LightQL\Attributes\OneToMany;
 use ElementaryFramework\LightQL\Attributes\OneToOne;
 use ElementaryFramework\LightQL\Attributes\Size;
+use ElementaryFramework\LightQL\Attributes\Transformer;
 use ElementaryFramework\LightQL\Attributes\Unique;
 use ElementaryFramework\LightQL\Attributes\Validator;
 use ReflectionException;
@@ -40,6 +41,11 @@ class Column
      * The validator instance for this column.
      */
     private ?IValidator $validator = null;
+
+    /**
+     * The transformer instance for this column.
+     */
+    private ?ITransformer $transformer = null;
 
     /**
      * The column name.
@@ -167,6 +173,13 @@ class Column
             $column->validator = null;
         }
 
+        try {
+            $transformer = AttributeUtils::ofProperty($entity, $property, Transformer::class)->transformer;
+            $column->transformer = new $transformer;
+        } catch (ReflectionException) {
+            $column->transformer = null;
+        }
+
         $column->entityClass = is_string($entity) ? $entity : $entity::class;
         $column->propertyName = $property;
 
@@ -186,5 +199,35 @@ class Column
         }
 
         return $this->validator->validate($value, $this->propertyName, $entity);
+    }
+
+    /**
+     * Serializes the given value for this column.
+     *
+     * @param mixed $value The value to serialize.
+     * @param IEntity $entity The entity instance.
+     */
+    public function serialize(mixed $value, IEntity $entity): mixed
+    {
+        if ($this->transformer === null) {
+            return $value;
+        }
+
+        return $this->transformer->serialize($value, $this->propertyName, $entity);
+    }
+
+    /**
+     * Unserializes the given value for this column.
+     *
+     * @param mixed $value The value to unserialize.
+     * @param array $row The table row.
+     */
+    public function unserialize(mixed $value, array $row): mixed
+    {
+        if ($this->transformer === null) {
+            return $value;
+        }
+
+        return $this->transformer->unserialize($value, $this->name, $row);
     }
 }

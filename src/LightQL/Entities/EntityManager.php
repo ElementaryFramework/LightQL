@@ -69,7 +69,7 @@ final readonly class EntityManager
 
         /** @var IEntity $entity */
         $entity = new $entityClass;
-        $columns = $entity->getColumns();
+        $columns = $entity->columns;
 
         $where = [];
 
@@ -113,7 +113,7 @@ final readonly class EntityManager
     {
         $table = AttributeUtils::ofClass($entity, Table::class);
 
-        $columns = $entity->getColumns();
+        $columns = $entity->columns;
         $fieldAndValues = [];
 
         $autoIncrementProperty = null;
@@ -172,7 +172,7 @@ final readonly class EntityManager
                 throw new ValidationException($property);
             }
 
-            $fieldAndValues[$column->name] = $value;
+            $fieldAndValues[$column->name] = $column->serialize($value, $entity);
         }
 
         try {
@@ -203,7 +203,7 @@ final readonly class EntityManager
     {
         $table = AttributeUtils::ofClass($entity, Table::class);
 
-        $columns = $entity->getColumns();
+        $columns = $entity->columns;
         $fieldAndValues = [];
 
         $where = [];
@@ -234,7 +234,7 @@ final readonly class EntityManager
                 throw new ValidationException($property);
             }
 
-            $fieldAndValues[$column->name] = $value;
+            $fieldAndValues[$column->name] = $column->serialize($value, $entity);
 
             if ($column->isPrimaryKey) {
                 $where[$column->name] = $value;
@@ -265,7 +265,7 @@ final readonly class EntityManager
     {
         $table = AttributeUtils::ofClass($entity, Table::class);
 
-        $columns = $entity->getColumns();
+        $columns = $entity->columns;
 
         $where = [];
         $pk = [];

@@ -25,21 +25,21 @@ use InvalidArgumentException;
  * a class with the {@see Table} attribute to have effect.
  */
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
-class Unique
+readonly class Unique
 {
     /**
      * The columns that form the unique constraint.
      *
      * @var string[]
      */
-    public readonly array $columns;
+    public array $columns;
 
     /**
      * The name of the unique constraint.
      *
      * @var string|null
      */
-    public readonly ?string $name;
+    public ?string $name;
 
     /**
      * Initialize the unique attribute.

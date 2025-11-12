@@ -11,11 +11,9 @@ use InvalidArgumentException;
  * Persistence Unit Attribute
  *
  * Used to specify the persistence unit to use for an entity manager.
- *
- * @property-read string $name The name of this persistence unit.
  */
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class PersistenceUnit
+readonly class PersistenceUnit
 {
     /**
      * Initialize the persistence unit attribute.
@@ -25,10 +23,11 @@ class PersistenceUnit
      * @throws InvalidArgumentException
      */
     public function __construct(
-        public readonly string $name
-    ) {
+        public string $name
+    )
+    {
         if (empty($name)) {
-            throw new InvalidArgumentException(self::class . ' requires a non-empty name property.');
+            throw new InvalidArgumentException(self::class . ' requires a non-empty "name" property.');
         }
     }
 }

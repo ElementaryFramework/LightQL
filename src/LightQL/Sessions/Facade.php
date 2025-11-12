@@ -71,7 +71,7 @@ abstract class Facade implements IFacade
             ->getAttributes(PersistenceUnitAttribute::class);
 
         if (empty($propAttributes)) {
-            throw new FacadeException("Cannot create the entity facade. The property \"entityManager\" has no PersistenceUnit attribute.");
+            throw new FacadeException('Cannot create the entity facade. The property "entityManager" has no PersistenceUnit attribute.');
         }
 
         $reflection = new ReflectionClass($class);
@@ -105,7 +105,7 @@ abstract class Facade implements IFacade
 
         $this->entityManager->persist($entity);
 
-        $columns = $entity->getColumns();
+        $columns = $entity->columns;
         foreach ($columns as $property => $column) {
             if ($column->isOneToMany) {
                 $this->handleRelation($entity, $property, $this->fetchOneToMany(...));
@@ -147,7 +147,7 @@ abstract class Facade implements IFacade
      */
     public function retrieve(int|string|IPrimaryKey $id): IEntity
     {
-        return $this->parseRawEntity(
+        return $this->parseRow(
             $this->entityManager->find($this->entityClass, $id),
         );
     }
@@ -167,7 +167,7 @@ abstract class Facade implements IFacade
             ->execute()
             ->fetchAll();
 
-        return $this->parseRawEntities($rawEntities);
+        return $this->parseRows($rawEntities);
     }
 
     /**
@@ -186,7 +186,7 @@ abstract class Facade implements IFacade
             ->execute()
             ->fetchAll();
 
-        return $this->parseRawEntities($rawEntities);
+        return $this->parseRows($rawEntities);
     }
 
     /**
@@ -264,7 +264,7 @@ abstract class Facade implements IFacade
 
         /** @var IEntity $referencedEntity */
         $referencedEntity = new $manyToMany->entity;
-        foreach ($referencedEntity->getColumns() as $p => $c) {
+        foreach ($referencedEntity->columns as $p => $c) {
             if ($c->isManyToMany) {
                 /** @var ManyToMany $mappedManyToMany */
                 $mappedManyToMany = new ReflectionProperty($referencedEntity, $p)->getAttributes(ManyToMany::class)[0]->newInstance();
@@ -478,10 +478,10 @@ abstract class Facade implements IFacade
      * @throws EntityException
      * @throws ReflectionException
      */
-    private function parseRawEntities(array $rawEntities): array
+    private function parseRows(array $rawEntities): array
     {
         return array_map(
-            fn(array $rawEntity) => $this->parseRawEntity($rawEntity),
+            fn(array $rawEntity) => $this->parseRow($rawEntity),
             $rawEntities
         );
     }
@@ -489,17 +489,26 @@ abstract class Facade implements IFacade
     /**
      * Parses raw data to Entity.
      *
-     * @param array $rawEntity Raw entity data provided from database.
+     * @param array $row Raw entity data provided from database.
      *
      * @return TEntity
      *
      * @throws EntityException
      * @throws ReflectionException
      */
-    private function parseRawEntity(array $rawEntity): IEntity
+    private function parseRow(array $row): IEntity
     {
         /** @var TEntity $entity */
-        $entity = new ($this->entityClass)($rawEntity);
+        $entity = new ($this->entityClass)();
+
+        // Unserialize values
+        foreach ($entity->columns as $column) {
+            if (array_key_exists($column->name, $row)) {
+                $row[$column->name] = $column->unserialize($row[$column->name], $row);
+            }
+        }
+
+        $entity->hydrate($row);
 
         $properties = new ReflectionClass($this->entityClass)->getProperties();
 
